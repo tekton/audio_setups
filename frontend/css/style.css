@@ -1,0 +1,247 @@
+:root {
+  --bg: #1a1a1a;
+  --surface: #2d2d2d;
+  --text: #e0e0e0;
+  --device-stroke: #4a9eff;
+  --device-fill: #252525;
+  --cable-color: #6b9b6b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid #444;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbar-label {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin: 0;
+}
+
+.toolbar-select {
+  padding: 0.4rem 0.75rem;
+  background: #444;
+  color: var(--text);
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 10rem;
+}
+
+.toolbar-select:hover,
+.toolbar-select:focus {
+  background: #555;
+  outline: none;
+}
+
+.toolbar-input {
+  padding: 0.4rem 0.75rem;
+  background: #444;
+  color: var(--text);
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  min-width: 8rem;
+}
+
+.toolbar-input::placeholder {
+  color: #888;
+}
+
+.toolbar button {
+  padding: 0.4rem 0.75rem;
+  background: #444;
+  color: var(--text);
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.toolbar button:hover {
+  background: #555;
+}
+
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar button:disabled:hover {
+  background: #444;
+}
+
+.ports-editor {
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid #444;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ports-editor.hidden {
+  display: none;
+}
+
+.ports-editor .ports-editor-label {
+  font-weight: 600;
+  margin: 0 0.5rem 0 0;
+}
+
+.ports-editor label {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.ports-editor input {
+  padding: 0.3rem 0.5rem;
+  background: #444;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.9rem;
+  min-width: 10rem;
+}
+
+.ports-editor #btn-apply-ports {
+  padding: 0.4rem 0.75rem;
+  background: #444;
+  color: var(--text);
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.ports-editor #btn-apply-ports:hover {
+  background: #555;
+}
+
+.device-port {
+  fill: var(--device-fill);
+  stroke: var(--device-stroke);
+  stroke-width: 1.5;
+  pointer-events: all;
+  cursor: default;
+}
+
+.port-input {
+  cursor: crosshair;
+}
+
+.port-output {
+  cursor: crosshair;
+}
+
+.port-output:hover {
+  fill: var(--cable-color);
+}
+
+main {
+  flex: 1;
+  overflow: hidden;
+  padding: 0.5rem;
+}
+
+#canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  background: var(--bg);
+  border-radius: 6px;
+  cursor: default;
+}
+
+#canvas.drawing {
+  cursor: crosshair;
+}
+
+#canvas.moving {
+  cursor: grabbing;
+}
+
+.device-block {
+  cursor: grab;
+  fill: var(--device-fill);
+  stroke: var(--device-stroke);
+  stroke-width: 2;
+  rx: 4;
+}
+
+.device-block:hover {
+  fill: #2a2a2a;
+}
+
+.device-block:active {
+  cursor: grabbing;
+}
+
+.device-block.drag-source {
+  stroke: var(--cable-color);
+  stroke-width: 3;
+}
+
+.device-block.selected {
+  stroke: #e0b020;
+  stroke-width: 3;
+}
+
+.device-label {
+  font-size: 12px;
+  fill: var(--text);
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+.cable {
+  fill: none;
+  stroke: var(--cable-color);
+  stroke-width: 2;
+  pointer-events: stroke;
+}
+
+.cable:hover {
+  stroke-width: 3;
+}
+
+.cable.selected {
+  stroke: #e0b020;
+  stroke-width: 3;
+}
+
+.rubber-band {
+  pointer-events: none;
+}
