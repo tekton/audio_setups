@@ -9,7 +9,10 @@
 <body>
   <header>
     <h1>Audio gear layout</h1>
-    <a href="device-types.html" class="nav-link">Device types</a>
+    <nav>
+      <a href="port-types.html" class="nav-link">Port types</a>
+      <a href="device-types.html" class="nav-link">Device types</a>
+    </nav>
     <div class="toolbar">
       <label for="add-device-select" class="toolbar-label">Add device</label>
       <select id="add-device-select" class="toolbar-select" aria-label="Add device type">
@@ -19,7 +22,7 @@
         <option value="speaker">Speaker</option>
       </select>
       <button type="button" id="btn-delete">Delete device</button>
-      <button type="button" id="btn-remove-cable" disabled>Remove cable</button>
+      <button type="button" id="btn-remove-cable" disabled>Sever Connection</button>
       <label for="storage-mode-select" class="toolbar-label">Save to</label>
       <select id="storage-mode-select" class="toolbar-select" aria-label="Storage: Server or Device">
         <option value="server">Server</option>
@@ -44,7 +47,8 @@
     <input type="text" id="ports-outputs" placeholder="e.g. Out L, Out R" />
     <button type="button" id="btn-apply-ports">Apply</button>
   </aside>
-  <main>
+  <main class="canvas-wrapper">
+    <div id="canvas-message" class="canvas-message" role="status" aria-live="polite"></div>
     <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -57,6 +61,7 @@
     </svg>
   </main>
 
+  <script src="js/port-type-default.js"></script>
   <script src="js/app.js" type="module"></script>
 </body>
 </html>

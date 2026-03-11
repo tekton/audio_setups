@@ -4,8 +4,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import init_db
-from .models import DeviceTypeTemplate, Layout
+from .models import DeviceTypeTemplate, Layout, PortType
 from .device_type_store import delete_device_type, get_device_type, list_device_types, save_device_type
+from .port_type_store import delete_port_type, get_port_type, list_port_types, save_port_type
 from .store import delete_layout, get_layout, list_layouts, save_layout
 
 app = FastAPI(title="Audio gear layout API", version="0.1.0")
@@ -83,3 +84,33 @@ def api_update_device_type(template_id: str, template: DeviceTypeTemplate) -> De
 def api_delete_device_type(template_id: str) -> None:
     if not delete_device_type(template_id):
         raise HTTPException(status_code=404, detail="Device type not found")
+
+
+@app.get("/port-types")
+def api_list_port_types() -> list[PortType]:
+    return list_port_types()
+
+
+@app.get("/port-types/{port_type_id}")
+def api_get_port_type(port_type_id: str) -> PortType:
+    t = get_port_type(port_type_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="Port type not found")
+    return t
+
+
+@app.post("/port-types")
+def api_create_port_type(port_type: PortType) -> PortType:
+    return save_port_type(port_type)
+
+
+@app.put("/port-types/{port_type_id}")
+def api_update_port_type(port_type_id: str, port_type: PortType) -> PortType:
+    updated = port_type.model_copy(update={"id": port_type_id})
+    return save_port_type(updated)
+
+
+@app.delete("/port-types/{port_type_id}")
+def api_delete_port_type(port_type_id: str) -> None:
+    if not delete_port_type(port_type_id):
+        raise HTTPException(status_code=404, detail="Port type not found")

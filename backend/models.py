@@ -37,6 +37,14 @@ class PortDef(BaseModel):
     type: str = "audio"
 
 
+class PortType(BaseModel):
+    """Defines a port type (name, type slug, color) for like-to-like and canvas coloring."""
+    id: str | None = None
+    name: str = ""
+    type: str = ""  # slug used in PortDef.type, e.g. "audio", "power"
+    color: str = "#808080"  # hex for canvas
+
+
 class DeviceTypeTemplate(BaseModel):
     """Custom device type (template) for the Add device dropdown. Ports have types for like-to-like matching."""
     id: str | None = None

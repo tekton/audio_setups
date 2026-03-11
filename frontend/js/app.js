@@ -10,6 +10,10 @@ const PORT_R = 5;
 const LOCAL_STORAGE_KEY = 'audio_gear_layouts';
 const STORAGE_MODE_KEY = 'audio_gear_storage_mode';
 const CUSTOM_TYPES_KEY = 'audio_gear_device_types';
+const PORT_TYPES_LOCAL_KEY = 'audio_gear_port_types';
+const DEFAULT_PORT_TYPE = window.DEFAULT_PORT_TYPE || { type: 'audio', color: '#6b9b6b' };
+
+let portTypesList = [DEFAULT_PORT_TYPE];
 
 let state = {
   layoutId: null,
@@ -122,6 +126,29 @@ function normalizePorts(ports) {
   return ports.map((p) => (typeof p === 'string' ? { name: p, type: 'audio' } : { name: p.name || '', type: p.type || 'audio' }));
 }
 
+function getPortTypeColor(typeSlug) {
+  const pt = portTypesList.find((p) => p.type === (typeSlug || 'audio'));
+  return pt ? pt.color : DEFAULT_PORT_TYPE.color;
+}
+
+async function loadPortTypes() {
+  let api = [];
+  try {
+    const res = await fetch(`${API_BASE}/port-types`);
+    if (res.ok) api = await res.json();
+  } catch (_) {}
+  try {
+    const raw = localStorage.getItem(PORT_TYPES_LOCAL_KEY);
+    const local = raw ? JSON.parse(raw) : [];
+    const byId = new Map();
+    [DEFAULT_PORT_TYPE, ...api].forEach((t) => byId.set(t.id, t));
+    local.forEach((t) => { if (t.id !== DEFAULT_PORT_TYPE.id) byId.set(t.id, t); });
+    portTypesList = Array.from(byId.values());
+  } catch (_) {
+    portTypesList = [DEFAULT_PORT_TYPE, ...api];
+  }
+}
+
 function getPortByName(device, portName, io) {
   const ports = normalizePorts(io === 'input' ? device.input_ports : device.output_ports);
   return ports.find((p) => p.name === portName);
@@ -182,6 +209,7 @@ function renderDevices() {
       circle.setAttribute('cx', x);
       circle.setAttribute('cy', y);
       circle.setAttribute('r', PORT_R);
+      circle.style.fill = getPortTypeColor(p.type);
       circle.dataset.port = p.name;
       circle.dataset.portType = p.type || 'audio';
       circle.dataset.portIo = 'input';
@@ -196,6 +224,7 @@ function renderDevices() {
       circle.setAttribute('cx', x);
       circle.setAttribute('cy', y);
       circle.setAttribute('r', PORT_R);
+      circle.style.fill = getPortTypeColor(p.type);
       circle.dataset.port = p.name;
       circle.dataset.portType = p.type || 'audio';
       circle.dataset.portIo = 'output';
@@ -287,8 +316,32 @@ function updateRubberBand(pt) {
   rubberBand.setAttribute('y2', pt.y);
 }
 
+const PORT_MISMATCH_DURATION_MS = 3500;
+
+function showPortTypeMismatchMessage() {
+  const el = document.getElementById('canvas-message');
+  if (!el) return;
+  el.textContent = 'Port types don\'t match. Connect the same type (e.g. audio to audio).';
+  el.className = 'canvas-message visible port-mismatch';
+  clearTimeout(showPortTypeMismatchMessage._timeout);
+  showPortTypeMismatchMessage._timeout = setTimeout(() => {
+    el.className = 'canvas-message';
+    el.textContent = '';
+  }, PORT_MISMATCH_DURATION_MS);
+}
+
 function endCableDrag(toDeviceId, toPortName, toPortType) {
   if (!dragState || dragState.type !== 'cable' || !toDeviceId || toDeviceId === dragState.fromDeviceId) {
+    dragState = null;
+    hideRubberBand();
+    canvas.classList.remove('drawing');
+    document.querySelectorAll('.device-block.drag-source').forEach((el) => el.classList.remove('drag-source'));
+    return;
+  }
+  const fromType = (dragState.fromPortType || 'audio').toLowerCase();
+  const toType = (toPortType || 'audio').toLowerCase();
+  if (fromType !== toType) {
+    showPortTypeMismatchMessage();
     dragState = null;
     hideRubberBand();
     canvas.classList.remove('drawing');
@@ -751,6 +804,10 @@ setupCanvasListeners();
 renderDevices();
 renderCables();
 renderPortsEditor();
+loadPortTypes().then(() => {
+  renderDevices();
+  renderCables();
+});
 updateRemoveCableButton();
 updateDeleteLayoutButton();
 loadCustomDeviceTypes().then(() => refreshAddDeviceDropdown());

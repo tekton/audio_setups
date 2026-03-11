@@ -3,8 +3,34 @@
  * Saves to localStorage (works offline), optional API sync, and JSON export/import.
  */
 
+const DEFAULT_PORT_TYPE = window.DEFAULT_PORT_TYPE || { id: 'default_audio', name: 'Audio', type: 'audio', color: '#6b9b6b' };
 const API_BASE = 'http://localhost:7001';
 const LOCAL_KEY = 'audio_gear_device_types';
+const PORT_TYPES_LOCAL_KEY = 'audio_gear_port_types';
+
+function getLocalPortTypes() {
+  try {
+    const raw = localStorage.getItem(PORT_TYPES_LOCAL_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadPortTypes() {
+  let api = [];
+  try {
+    const res = await fetch(`${API_BASE}/port-types`);
+    if (res.ok) api = await res.json();
+  } catch (_) {}
+  const local = getLocalPortTypes();
+  const byId = new Map();
+  [DEFAULT_PORT_TYPE, ...api].forEach((t) => byId.set(t.id, t));
+  local.forEach((t) => {
+    if (t.id !== DEFAULT_PORT_TYPE.id) byId.set(t.id, t);
+  });
+  return Array.from(byId.values());
+}
 
 function getLocalTypes() {
   try {
@@ -38,9 +64,10 @@ async function loadMergedTypes() {
   return Array.from(byId.values());
 }
 
-function renderPortRows(containerId, ports, onUpdate) {
+function renderPortRows(containerId, ports, onUpdate, portTypes = []) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
+  const types = portTypes.length ? portTypes : [DEFAULT_PORT_TYPE];
   (ports || []).forEach((p, i) => {
     const row = document.createElement('div');
     row.className = 'port-row';
@@ -49,23 +76,25 @@ function renderPortRows(containerId, ports, onUpdate) {
     name.className = 'port-name';
     name.placeholder = 'Port name';
     name.value = typeof p === 'string' ? p : (p.name || '');
-    const type = document.createElement('input');
-    type.type = 'text';
-    type.className = 'port-type';
-    type.placeholder = 'Type (e.g. audio)';
-    type.value = typeof p === 'string' ? '' : (p.type || 'audio');
+    const typeSelect = document.createElement('select');
+    typeSelect.className = 'port-type-select';
+    typeSelect.innerHTML = types.map((pt) => `<option value="${escapeHtml(pt.type)}">${escapeHtml(pt.name)} (${escapeHtml(pt.type)})</option>`).join('');
+    const portType = typeof p === 'string' ? 'audio' : (p.type || 'audio');
+    const match = types.find((pt) => pt.type === portType);
+    typeSelect.value = match ? match.type : (types[0]?.type || 'audio');
     const rm = document.createElement('button');
     rm.type = 'button';
     rm.textContent = 'Remove';
     rm.className = 'btn-secondary';
     rm.addEventListener('click', () => {
       ports.splice(i, 1);
-      renderPortRows(containerId, ports, onUpdate);
+      renderPortRows(containerId, ports, onUpdate, portTypes);
       onUpdate?.();
     });
-    name.addEventListener('input', () => { ports[i] = { name: name.value.trim(), type: type.value.trim() || 'audio' }; onUpdate?.(); });
-    type.addEventListener('input', () => { ports[i] = { name: name.value.trim(), type: type.value.trim() || 'audio' }; onUpdate?.(); });
-    row.append(name, type, rm);
+    const sync = () => { ports[i] = { name: name.value.trim(), type: typeSelect.value.trim() || 'audio' }; onUpdate?.(); };
+    name.addEventListener('input', sync);
+    typeSelect.addEventListener('change', sync);
+    row.append(name, typeSelect, rm);
     container.appendChild(row);
   });
 }
@@ -75,7 +104,7 @@ function getPortsFromContainer(containerId) {
   const rows = container.querySelectorAll('.port-row');
   return Array.from(rows).map((row) => {
     const nameEl = row.querySelector('.port-name');
-    const typeEl = row.querySelector('.port-type');
+    const typeEl = row.querySelector('.port-type-select');
     return { name: (nameEl?.value || '').trim(), type: (typeEl?.value || '').trim() || 'audio' };
   }).filter((p) => p.name);
 }
@@ -83,6 +112,7 @@ function getPortsFromContainer(containerId) {
 let editingId = null;
 let inputPorts = [];
 let outputPorts = [];
+let portTypesList = [DEFAULT_PORT_TYPE];
 
 function renderTypeList(types) {
   const ul = document.getElementById('type-list');
@@ -119,8 +149,8 @@ function fillForm(t) {
   document.getElementById('template-label').value = t.label || '';
   inputPorts = (t.input_ports || []).map((p) => ({ name: typeof p === 'string' ? p : p.name, type: typeof p === 'string' ? 'audio' : (p.type || 'audio') }));
   outputPorts = (t.output_ports || []).map((p) => ({ name: typeof p === 'string' ? p : p.name, type: typeof p === 'string' ? 'audio' : (p.type || 'audio') }));
-  renderPortRows('input-ports-container', inputPorts);
-  renderPortRows('output-ports-container', outputPorts);
+  renderPortRows('input-ports-container', inputPorts, null, portTypesList);
+  renderPortRows('output-ports-container', outputPorts, null, portTypesList);
 }
 
 function clearForm() {
@@ -132,8 +162,8 @@ function clearForm() {
   document.getElementById('template-label').value = '';
   inputPorts = [];
   outputPorts = [];
-  renderPortRows('input-ports-container', inputPorts);
-  renderPortRows('output-ports-container', outputPorts);
+  renderPortRows('input-ports-container', inputPorts, null, portTypesList);
+  renderPortRows('output-ports-container', outputPorts, null, portTypesList);
 }
 
 function getFormData() {
@@ -258,12 +288,15 @@ document.getElementById('import-file').addEventListener('change', (evt) => {
 
 document.getElementById('btn-add-input-port').addEventListener('click', () => {
   inputPorts.push({ name: '', type: 'audio' });
-  renderPortRows('input-ports-container', inputPorts);
+  renderPortRows('input-ports-container', inputPorts, null, portTypesList);
 });
 
 document.getElementById('btn-add-output-port').addEventListener('click', () => {
   outputPorts.push({ name: '', type: 'audio' });
-  renderPortRows('output-ports-container', outputPorts);
+  renderPortRows('output-ports-container', outputPorts, null, portTypesList);
 });
 
-loadMergedTypes().then(renderTypeList);
+(async () => {
+  portTypesList = await loadPortTypes();
+  loadMergedTypes().then(renderTypeList);
+})();
