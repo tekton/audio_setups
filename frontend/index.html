@@ -22,6 +22,11 @@
       </select>
       <button type="button" id="btn-delete">Delete device</button>
       <button type="button" id="btn-remove-cable" disabled>Remove cable</button>
+      <label for="storage-mode-select" class="toolbar-label">Save to</label>
+      <select id="storage-mode-select" class="toolbar-select" aria-label="Storage: Server or Device">
+        <option value="server">Server</option>
+        <option value="local">Device</option>
+      </select>
       <input type="text" id="layout-name" class="toolbar-input" placeholder="Layout name" value="Untitled layout" aria-label="Layout name" />
       <button type="button" id="btn-save">Save</button>
       <button type="button" id="btn-new">New layout</button>
@@ -29,7 +34,7 @@
       <select id="load-layout-select" class="toolbar-select" aria-label="Load saved layout">
         <option value="">— Select to load —</option>
       </select>
-      <button type="button" id="btn-delete-layout" disabled title="Delete current layout from server">Delete layout</button>
+      <button type="button" id="btn-delete-layout" disabled title="Delete current layout">Delete layout</button>
     </div>
   </header>
 

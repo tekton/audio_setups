@@ -7,6 +7,8 @@ const API_BASE = 'http://localhost:7001';
 const DEVICE_W = 120;
 const DEVICE_H = 56;
 const PORT_R = 5;
+const LOCAL_STORAGE_KEY = 'audio_gear_layouts';
+const STORAGE_MODE_KEY = 'audio_gear_storage_mode';
 
 let state = {
   layoutId: null,
@@ -15,7 +17,89 @@ let state = {
   connections: [],
   selectedDeviceId: null,
   selectedConnectionId: null,
+  storageMode: (() => {
+    try {
+      const m = localStorage.getItem(STORAGE_MODE_KEY);
+      return m === 'local' || m === 'server' ? m : 'local';
+    } catch {
+      return 'local';
+    }
+  })(),
 };
+
+// Storage abstraction: same interface for API and device storage (easy to add more backends later)
+const storage = {
+  server: {
+    async listLayouts() {
+      const res = await fetch(`${API_BASE}/layouts`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async getLayout(id) {
+      const res = await fetch(`${API_BASE}/layouts/${id}`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async saveLayout(layout) {
+      const method = layout.id ? 'PUT' : 'POST';
+      const url = layout.id ? `${API_BASE}/layouts/${layout.id}` : `${API_BASE}/layouts`;
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(layout) });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async deleteLayout(id) {
+      const res = await fetch(`${API_BASE}/layouts/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(await res.text());
+    },
+  },
+  local: {
+    _read() {
+      try {
+        const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    },
+    _write(layouts) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(layouts));
+    },
+    async listLayouts() {
+      return Promise.resolve(this._read().map((l) => ({ id: l.id, name: l.name || l.id })));
+    },
+    async getLayout(id) {
+      const list = this._read();
+      const found = list.find((l) => l.id === id);
+      if (!found) throw new Error('Layout not found');
+      return Promise.resolve(found);
+    },
+    async saveLayout(layout) {
+      const list = this._read();
+      const id = layout.id || `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const payload = { id, name: layout.name || 'Untitled layout', devices: layout.devices || [], connections: layout.connections || [] };
+      const idx = list.findIndex((l) => l.id === id);
+      if (idx >= 0) list[idx] = payload;
+      else list.push(payload);
+      this._write(list);
+      return Promise.resolve(payload);
+    },
+    async deleteLayout(id) {
+      const list = this._read().filter((l) => l.id !== id);
+      this._write(list);
+      return Promise.resolve();
+    },
+  },
+};
+
+function getStorage() {
+  const mode = state.storageMode === 'local' ? 'local' : 'server';
+  return storage[mode];
+}
+
+function syncStorageModeFromUI() {
+  const sel = document.getElementById('storage-mode-select');
+  if (sel && (sel.value === 'local' || sel.value === 'server')) state.storageMode = sel.value;
+}
 
 let dragState = null; // { type: 'cable', ... } | { type: 'move', deviceId, offsetX, offsetY, startX, startY }
 
@@ -450,10 +534,10 @@ function newLayout() {
 async function refreshLoadLayoutOptions() {
   const sel = document.getElementById('load-layout-select');
   if (!sel) return;
+  syncStorageModeFromUI();
   try {
-    const res = await fetch(`${API_BASE}/layouts`);
-    if (!res.ok) return;
-    const layouts = await res.json();
+    const adapter = state.storageMode === 'local' ? storage.local : storage.server;
+    const layouts = await adapter.listLayouts();
     if (!Array.isArray(layouts)) return;
     sel.innerHTML = '';
     const place = document.createElement('option');
@@ -467,9 +551,18 @@ async function refreshLoadLayoutOptions() {
       sel.appendChild(opt);
     });
   } catch (_) {
-    // Leave existing options unchanged if fetch fails (e.g. backend not ready)
+    // Leave existing options unchanged if list fails (e.g. backend not ready)
   }
 }
+
+document.getElementById('storage-mode-select').value = state.storageMode;
+document.getElementById('storage-mode-select').addEventListener('change', async (evt) => {
+  state.storageMode = evt.target.value;
+  try {
+    localStorage.setItem(STORAGE_MODE_KEY, state.storageMode);
+  } catch (_) {}
+  await refreshLoadLayoutOptions();
+});
 
 document.getElementById('layout-name').addEventListener('input', (evt) => {
   state.name = evt.target.value.trim() || 'Untitled layout';
@@ -480,23 +573,17 @@ document.getElementById('layout-name').addEventListener('blur', (evt) => {
 });
 
 document.getElementById('btn-save').addEventListener('click', async () => {
+  syncStorageModeFromUI();
   state.name = document.getElementById('layout-name').value.trim() || state.name;
-  const body = {
-    id: state.layoutId,
-    name: state.name,
-    devices: state.devices,
-    connections: state.connections,
-  };
+  const body = { id: state.layoutId, name: state.name, devices: state.devices, connections: state.connections };
   try {
-    const res = state.layoutId
-      ? await fetch(`${API_BASE}/layouts/${state.layoutId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      : await fetch(`${API_BASE}/layouts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!res.ok) throw new Error(await res.text());
-    const layout = await res.json();
+    const adapter = state.storageMode === 'local' ? storage.local : storage.server;
+    const layout = await adapter.saveLayout(body);
     state.layoutId = layout.id;
     state.name = layout.name;
     document.getElementById('layout-name').value = state.name;
     await refreshLoadLayoutOptions();
+    updateDeleteLayoutButton();
     alert('Saved.');
   } catch (e) {
     alert('Save failed: ' + e.message);
@@ -517,10 +604,10 @@ document.getElementById('load-layout-select').addEventListener('mousedown', asyn
 document.getElementById('load-layout-select').addEventListener('change', async (evt) => {
   const id = evt.target.value;
   if (!id) return;
+  syncStorageModeFromUI();
   try {
-    const res = await fetch(`${API_BASE}/layouts/${id}`);
-    if (!res.ok) throw new Error(await res.text());
-    const layout = await res.json();
+    const adapter = state.storageMode === 'local' ? storage.local : storage.server;
+    const layout = await adapter.getLayout(id);
     setStateFromLayout(layout);
     evt.target.selectedIndex = 0;
   } catch (e) {
@@ -530,10 +617,12 @@ document.getElementById('load-layout-select').addEventListener('change', async (
 
 document.getElementById('btn-delete-layout').addEventListener('click', async () => {
   if (!state.layoutId) return;
-  if (!confirm('Delete this layout from the server?')) return;
+  syncStorageModeFromUI();
+  const msg = state.storageMode === 'local' ? 'Delete this layout from device storage?' : 'Delete this layout from the server?';
+  if (!confirm(msg)) return;
   try {
-    const res = await fetch(`${API_BASE}/layouts/${state.layoutId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(await res.text());
+    const adapter = state.storageMode === 'local' ? storage.local : storage.server;
+    await adapter.deleteLayout(state.layoutId);
     newLayout();
     await refreshLoadLayoutOptions();
   } catch (e) {
