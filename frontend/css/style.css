@@ -23,17 +23,32 @@ body {
 
 header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   padding: 0.75rem 1rem;
   background: var(--surface);
   border-bottom: 1px solid #444;
 }
 
-header h1 {
+/* Title + nav: fixed row, never shifts when toolbar expands */
+.header-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  gap: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.header-brand h1 {
   margin: 0;
+  margin-right: 2rem;
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+header nav {
+  margin-left: 2rem;
 }
 
 .nav-link {
@@ -42,14 +57,70 @@ header h1 {
   font-size: 0.9rem;
 }
 
+.nav-link + .nav-link {
+  margin-left: 1.5rem;
+}
+
 .nav-link:hover {
   text-decoration: underline;
+}
+
+.toolbar-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Main toolbar: more space between groups */
+.toolbar-row-main {
+  gap: 1.25rem;
+}
+
+.toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbar-row-main .toolbar-group + .toolbar-group {
+  padding-left: 1rem;
+  border-left: 1px solid #444;
+}
+
+/* Save/load bar: clearly separate row */
+.toolbar-save-load {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.25rem;
+  border-top: 1px solid #555;
+  background: rgba(0, 0, 0, 0.2);
+  transition: opacity 0.15s ease;
+}
+
+.toolbar-save-load .toolbar-group {
+  gap: 0.5rem;
+}
+
+.toolbar-save-load .toolbar-group + .toolbar-group {
+  padding-left: 1rem;
+  border-left: 1px solid #444;
+}
+
+.toolbar-save-load[hidden] {
+  display: none;
+}
+
+.toolbar-toggle {
+  /* no extra margin; spacing from .toolbar-group */
 }
 
 .toolbar-label {

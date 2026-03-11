@@ -719,6 +719,17 @@ async function refreshLoadLayoutOptions() {
 }
 
 document.getElementById('storage-mode-select').value = state.storageMode;
+
+const toolbarSaveLoad = document.getElementById('toolbar-save-load');
+const btnToggleSaveLoad = document.getElementById('btn-toggle-save-load');
+if (btnToggleSaveLoad && toolbarSaveLoad) {
+  btnToggleSaveLoad.addEventListener('click', () => {
+    const isHidden = toolbarSaveLoad.hidden;
+    toolbarSaveLoad.hidden = !isHidden;
+    btnToggleSaveLoad.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+  });
+}
+
 document.getElementById('storage-mode-select').addEventListener('change', async (evt) => {
   state.storageMode = evt.target.value;
   try {
