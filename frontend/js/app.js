@@ -112,6 +112,7 @@ const canvas = document.getElementById('canvas');
 const devicesLayer = document.getElementById('devices-layer');
 const cablesLayer = document.getElementById('cables-layer');
 const rubberBand = document.getElementById('rubber-band');
+const svgNs = 'http://www.w3.org/2000/svg';
 
 function genId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -241,19 +242,42 @@ function renderDevices() {
 }
 
 function renderCables() {
+  const defs = canvas.querySelector('defs');
+  if (defs) {
+    defs.querySelectorAll('marker.cable-marker').forEach((m) => m.remove());
+  }
   cablesLayer.innerHTML = '';
   state.connections.forEach((c) => {
     const endpoints = getConnectionEndpoints(c);
     if (!endpoints) return;
     const { a, b } = endpoints;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const portType = c.from_port_type || c.to_port_type || 'audio';
+    const color = getPortTypeColor(portType);
+    const markerId = 'arrowhead-cable-' + c.id;
+    if (defs) {
+      const marker = document.createElementNS(svgNs, 'marker');
+      marker.setAttribute('id', markerId);
+      marker.setAttribute('markerWidth', '10');
+      marker.setAttribute('markerHeight', '7');
+      marker.setAttribute('refX', '9');
+      marker.setAttribute('refY', '3.5');
+      marker.setAttribute('orient', 'auto');
+      marker.classList.add('cable-marker');
+      const poly = document.createElementNS(svgNs, 'polygon');
+      poly.setAttribute('points', '0 0, 10 3.5, 0 7');
+      poly.setAttribute('fill', color);
+      marker.appendChild(poly);
+      defs.appendChild(marker);
+    }
+    const line = document.createElementNS(svgNs, 'line');
     line.setAttribute('class', 'cable' + (c.id === state.selectedConnectionId ? ' selected' : ''));
     line.dataset.connectionId = c.id;
     line.setAttribute('x1', a.x);
     line.setAttribute('y1', a.y);
     line.setAttribute('x2', b.x);
     line.setAttribute('y2', b.y);
-    line.setAttribute('marker-end', 'url(#arrowhead)');
+    line.setAttribute('marker-end', 'url(#' + markerId + ')');
+    line.style.stroke = color;
     cablesLayer.appendChild(line);
   });
 }
@@ -268,6 +292,8 @@ function showRubberBand(x1, y1, x2, y2) {
 
 function hideRubberBand() {
   rubberBand.style.display = 'none';
+  const rubberArrow = canvas.querySelector('#arrowhead polygon');
+  if (rubberArrow) rubberArrow.setAttribute('fill', DEFAULT_PORT_TYPE.color || '#6b9b6b');
 }
 
 function svgPoint(evt) {
@@ -286,7 +312,11 @@ function startCableDrag(deviceId, portName, portType, pt) {
   rubberBand.setAttribute('y1', start.y);
   rubberBand.setAttribute('x2', start.x);
   rubberBand.setAttribute('y2', start.y);
+  const color = getPortTypeColor(portType || 'audio');
+  rubberBand.style.stroke = color;
   rubberBand.style.display = '';
+  const rubberArrow = canvas.querySelector('#arrowhead polygon');
+  if (rubberArrow) rubberArrow.setAttribute('fill', color);
   canvas.classList.add('drawing');
   document.querySelector(`[data-device-id="${deviceId}"] rect`)?.classList.add('drag-source');
 }

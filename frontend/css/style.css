@@ -359,4 +359,5 @@ main.canvas-wrapper {
 
 .rubber-band {
   pointer-events: none;
+  stroke: var(--cable-color);
 }
