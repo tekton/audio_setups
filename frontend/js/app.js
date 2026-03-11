@@ -9,6 +9,7 @@ const DEVICE_H = 56;
 const PORT_R = 5;
 const LOCAL_STORAGE_KEY = 'audio_gear_layouts';
 const STORAGE_MODE_KEY = 'audio_gear_storage_mode';
+const CUSTOM_TYPES_KEY = 'audio_gear_device_types';
 
 let state = {
   layoutId: null,
@@ -116,6 +117,16 @@ function getDeviceById(id) {
   return state.devices.find((d) => d.id === id);
 }
 
+function normalizePorts(ports) {
+  if (!ports || !ports.length) return [];
+  return ports.map((p) => (typeof p === 'string' ? { name: p, type: 'audio' } : { name: p.name || '', type: p.type || 'audio' }));
+}
+
+function getPortByName(device, portName, io) {
+  const ports = normalizePorts(io === 'input' ? device.input_ports : device.output_ports);
+  return ports.find((p) => p.name === portName);
+}
+
 function getDeviceCenter(device) {
   return {
     x: device.position.x + DEVICE_W / 2,
@@ -124,8 +135,8 @@ function getDeviceCenter(device) {
 }
 
 function getPortPosition(device, portName, io) {
-  const ports = io === 'input' ? (device.input_ports || []) : (device.output_ports || []);
-  const idx = ports.indexOf(portName);
+  const ports = normalizePorts(io === 'input' ? device.input_ports : device.output_ports);
+  const idx = ports.findIndex((p) => p.name === portName);
   if (idx < 0) return getDeviceCenter(device);
   const n = ports.length;
   const x = io === 'input' ? device.position.x : device.position.x + DEVICE_W;
@@ -137,10 +148,12 @@ function getConnectionEndpoints(c) {
   const from = getDeviceById(c.from_device_id);
   const to = getDeviceById(c.to_device_id);
   if (!from || !to) return null;
-  const a = c.from_port && (from.output_ports || []).includes(c.from_port)
+  const outPorts = normalizePorts(from.output_ports);
+  const inPorts = normalizePorts(to.input_ports);
+  const a = c.from_port && outPorts.some((p) => p.name === c.from_port)
     ? getPortPosition(from, c.from_port, 'output')
     : getDeviceCenter(from);
-  const b = c.to_port && (to.input_ports || []).includes(c.to_port)
+  const b = c.to_port && inPorts.some((p) => p.name === c.to_port)
     ? getPortPosition(to, c.to_port, 'input')
     : getDeviceCenter(to);
   return { a, b };
@@ -149,8 +162,8 @@ function getConnectionEndpoints(c) {
 function renderDevices() {
   devicesLayer.innerHTML = '';
   state.devices.forEach((d) => {
-    const inputs = d.input_ports || [];
-    const outputs = d.output_ports || [];
+    const inputs = normalizePorts(d.input_ports);
+    const outputs = normalizePorts(d.output_ports);
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.dataset.deviceId = d.id;
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -160,7 +173,7 @@ function renderDevices() {
     rect.setAttribute('width', DEVICE_W);
     rect.setAttribute('height', DEVICE_H);
     g.append(rect);
-    inputs.forEach((name, i) => {
+    inputs.forEach((p, i) => {
       const n = inputs.length;
       const x = d.position.x;
       const y = d.position.y + (n === 1 ? DEVICE_H / 2 : (i + 1) * (DEVICE_H / (n + 1)));
@@ -169,11 +182,12 @@ function renderDevices() {
       circle.setAttribute('cx', x);
       circle.setAttribute('cy', y);
       circle.setAttribute('r', PORT_R);
-      circle.dataset.port = name;
+      circle.dataset.port = p.name;
+      circle.dataset.portType = p.type || 'audio';
       circle.dataset.portIo = 'input';
       g.append(circle);
     });
-    outputs.forEach((name, i) => {
+    outputs.forEach((p, i) => {
       const n = outputs.length;
       const x = d.position.x + DEVICE_W;
       const y = d.position.y + (n === 1 ? DEVICE_H / 2 : (i + 1) * (DEVICE_H / (n + 1)));
@@ -182,7 +196,8 @@ function renderDevices() {
       circle.setAttribute('cx', x);
       circle.setAttribute('cy', y);
       circle.setAttribute('r', PORT_R);
-      circle.dataset.port = name;
+      circle.dataset.port = p.name;
+      circle.dataset.portType = p.type || 'audio';
       circle.dataset.portIo = 'output';
       g.append(circle);
     });
@@ -233,11 +248,11 @@ function svgPoint(evt) {
   return pt.matrixTransform(canvas.getScreenCTM().inverse());
 }
 
-function startCableDrag(deviceId, portName, pt) {
+function startCableDrag(deviceId, portName, portType, pt) {
   const dev = getDeviceById(deviceId);
   if (!dev) return;
   const start = portName ? getPortPosition(dev, portName, 'output') : getDeviceCenter(dev);
-  dragState = { type: 'cable', fromDeviceId: deviceId, fromPort: portName || '', fromX: start.x, fromY: start.y };
+  dragState = { type: 'cable', fromDeviceId: deviceId, fromPort: portName || '', fromPortType: portType || '', fromX: start.x, fromY: start.y };
   rubberBand.setAttribute('x1', start.x);
   rubberBand.setAttribute('y1', start.y);
   rubberBand.setAttribute('x2', start.x);
@@ -272,7 +287,7 @@ function updateRubberBand(pt) {
   rubberBand.setAttribute('y2', pt.y);
 }
 
-function endCableDrag(toDeviceId, toPortName) {
+function endCableDrag(toDeviceId, toPortName, toPortType) {
   if (!dragState || dragState.type !== 'cable' || !toDeviceId || toDeviceId === dragState.fromDeviceId) {
     dragState = null;
     hideRubberBand();
@@ -286,6 +301,8 @@ function endCableDrag(toDeviceId, toPortName) {
     to_device_id: toDeviceId,
     from_port: dragState.fromPort || '',
     to_port: toPortName || '',
+    from_port_type: dragState.fromPortType || '',
+    to_port_type: toPortType || '',
   });
   dragState = null;
   hideRubberBand();
@@ -358,7 +375,7 @@ function onPointerUp(evt) {
     const inputPort = inCanvas ? evt.target.closest('.port-input') : null;
     const g = inCanvas ? evt.target.closest('[data-device-id]') : null;
     if (inputPort && g) {
-      endCableDrag(g.dataset.deviceId, inputPort.dataset.port || '');
+      endCableDrag(g.dataset.deviceId, inputPort.dataset.port || '', inputPort.dataset.portType || '');
     } else {
       dragState = null;
       hideRubberBand();
@@ -400,7 +417,7 @@ function setupCanvasListeners() {
     state.selectedConnectionId = null;
     updateRemoveCableButton();
     if (evt.shiftKey && port && port.dataset.portIo === 'output') {
-      startCableDrag(g.dataset.deviceId, port.dataset.port || '', pt);
+      startCableDrag(g.dataset.deviceId, port.dataset.port || '', port.dataset.portType || '', pt);
     } else if (!port || port.dataset.portIo !== 'output') {
       startDeviceMove(g.dataset.deviceId, pt);
     }
@@ -416,13 +433,68 @@ function setupCanvasListeners() {
 const DEVICE_LABELS = { dac: 'DAC', turntable: 'Turntable', phono: 'Phono pre-amp', headphone_amp: 'Headphone amp', eq: 'EQ', speaker: 'Speaker' };
 
 const DEFAULT_PORTS = {
-  dac: { input_ports: [], output_ports: ['Out'] },
-  turntable: { input_ports: [], output_ports: ['Phono'] },
-  phono: { input_ports: ['Phono'], output_ports: ['Out'] },
-  headphone_amp: { input_ports: ['In'], output_ports: ['Phones'] },
-  eq: { input_ports: ['In'], output_ports: ['Out'] },
-  speaker: { input_ports: ['In'], output_ports: [] },
+  dac: { input_ports: [], output_ports: [{ name: 'Out', type: 'audio' }] },
+  turntable: { input_ports: [], output_ports: [{ name: 'Phono', type: 'phono' }] },
+  phono: { input_ports: [{ name: 'Phono', type: 'phono' }], output_ports: [{ name: 'Out', type: 'audio' }] },
+  headphone_amp: { input_ports: [{ name: 'In', type: 'audio' }], output_ports: [{ name: 'Phones', type: 'audio' }] },
+  eq: { input_ports: [{ name: 'In', type: 'audio' }], output_ports: [{ name: 'Out', type: 'audio' }] },
+  speaker: { input_ports: [{ name: 'In', type: 'audio' }], output_ports: [] },
 };
+
+let customDeviceTypes = [];
+
+function getCustomDeviceTypes() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TYPES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadCustomDeviceTypes() {
+  customDeviceTypes = getCustomDeviceTypes();
+  try {
+    const res = await fetch(`${API_BASE}/device-types`);
+    if (res.ok) {
+      const api = await res.json();
+      const byId = new Map(customDeviceTypes.map((t) => [t.id, t]));
+      api.forEach((t) => byId.set(t.id, t));
+      customDeviceTypes = Array.from(byId.values());
+    }
+  } catch (_) {}
+  return customDeviceTypes;
+}
+
+function refreshAddDeviceDropdown() {
+  const sel = document.getElementById('add-device-select');
+  if (!sel) return;
+  const builtIn = [
+    { value: 'dac', label: 'DAC' },
+    { value: 'turntable', label: 'Turntable' },
+    { value: 'phono', label: 'Phono pre-amp' },
+    { value: 'headphone_amp', label: 'Headphone amp' },
+    { value: 'eq', label: 'EQ' },
+    { value: 'speaker', label: 'Speaker' },
+  ];
+  sel.innerHTML = '';
+  const empty = document.createElement('option');
+  empty.value = '';
+  empty.textContent = '— choose type —';
+  sel.appendChild(empty);
+  builtIn.forEach((o) => {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    sel.appendChild(opt);
+  });
+  customDeviceTypes.forEach((t) => {
+    const opt = document.createElement('option');
+    opt.value = `template:${t.id}`;
+    opt.textContent = (t.label || t.name) + ' (custom)';
+    sel.appendChild(opt);
+  });
+}
 
 function renderPortsEditor() {
   const panel = document.getElementById('ports-editor');
@@ -436,18 +508,37 @@ function renderPortsEditor() {
   panel.querySelector('.ports-editor-label').textContent = dev.label || dev.type;
   const inp = panel.querySelector('#ports-inputs');
   const out = panel.querySelector('#ports-outputs');
-  inp.value = (dev.input_ports || []).join(', ');
-  out.value = (dev.output_ports || []).join(', ');
+  const fromTemplate = !!(dev.templateId || dev.template_id);
+  panel.classList.toggle('ports-readonly', fromTemplate);
+  if (fromTemplate) {
+    const inPorts = normalizePorts(dev.input_ports);
+    const outPorts = normalizePorts(dev.output_ports);
+    inp.value = inPorts.map((p) => `${p.name} (${p.type})`).join(', ');
+    out.value = outPorts.map((p) => `${p.name} (${p.type})`).join(', ');
+    inp.readOnly = true;
+    out.readOnly = true;
+    panel.querySelector('#btn-apply-ports').style.display = 'none';
+  } else {
+    const inPorts = normalizePorts(dev.input_ports);
+    const outPorts = normalizePorts(dev.output_ports);
+    inp.value = inPorts.map((p) => p.name).join(', ');
+    out.value = outPorts.map((p) => p.name).join(', ');
+    inp.readOnly = false;
+    out.readOnly = false;
+    panel.querySelector('#btn-apply-ports').style.display = '';
+  }
 }
 
 function applyPortsFromEditor() {
   const dev = state.selectedDeviceId ? getDeviceById(state.selectedDeviceId) : null;
-  if (!dev) return;
+  if (!dev || dev.templateId || dev.template_id) return;
   const inp = document.getElementById('ports-inputs');
   const out = document.getElementById('ports-outputs');
   if (!inp || !out) return;
-  dev.input_ports = inp.value.split(',').map((s) => s.trim()).filter(Boolean);
-  dev.output_ports = out.value.split(',').map((s) => s.trim()).filter(Boolean);
+  const inNames = inp.value.split(',').map((s) => s.trim()).filter(Boolean);
+  const outNames = out.value.split(',').map((s) => s.trim()).filter(Boolean);
+  dev.input_ports = inNames.map((name) => ({ name, type: 'audio' }));
+  dev.output_ports = outNames.map((name) => ({ name, type: 'audio' }));
   renderDevices();
   renderCables();
 }
@@ -479,15 +570,34 @@ document.getElementById('btn-apply-ports').addEventListener('click', () => {
 document.getElementById('add-device-select').addEventListener('change', (evt) => {
   const type = evt.target.value;
   if (!type) return;
-  const defaults = DEFAULT_PORTS[type] || { input_ports: [], output_ports: [] };
-  state.devices.push({
-    id: genId(),
-    type,
-    label: DEVICE_LABELS[type] || type,
-    position: { x: 80 + state.devices.length * 20, y: 80 + state.devices.length * 20 },
-    input_ports: [...(defaults.input_ports || [])],
-    output_ports: [...(defaults.output_ports || [])],
-  });
+  if (type.startsWith('template:')) {
+    const templateId = type.slice(9);
+    const template = customDeviceTypes.find((t) => t.id === templateId);
+    if (!template) return;
+    const input_ports = (template.input_ports || []).map((p) => (typeof p === 'string' ? { name: p, type: 'audio' } : { name: p.name, type: p.type || 'audio' }));
+    const output_ports = (template.output_ports || []).map((p) => (typeof p === 'string' ? { name: p, type: 'audio' } : { name: p.name, type: p.type || 'audio' }));
+    state.devices.push({
+      id: genId(),
+      type: template.name || templateId,
+      label: template.label || template.name || templateId,
+      position: { x: 80 + state.devices.length * 20, y: 80 + state.devices.length * 20 },
+      input_ports,
+      output_ports,
+      templateId,
+    });
+  } else {
+    const defaults = DEFAULT_PORTS[type] || { input_ports: [], output_ports: [] };
+    const inp = (defaults.input_ports || []).map((p) => (typeof p === 'string' ? { name: p, type: 'audio' } : p));
+    const out = (defaults.output_ports || []).map((p) => (typeof p === 'string' ? { name: p, type: 'audio' } : p));
+    state.devices.push({
+      id: genId(),
+      type,
+      label: DEVICE_LABELS[type] || type,
+      position: { x: 80 + state.devices.length * 20, y: 80 + state.devices.length * 20 },
+      input_ports: [...inp],
+      output_ports: [...out],
+    });
+  }
   renderDevices();
   renderPortsEditor();
   evt.target.value = '';
@@ -575,7 +685,8 @@ document.getElementById('layout-name').addEventListener('blur', (evt) => {
 document.getElementById('btn-save').addEventListener('click', async () => {
   syncStorageModeFromUI();
   state.name = document.getElementById('layout-name').value.trim() || state.name;
-  const body = { id: state.layoutId, name: state.name, devices: state.devices, connections: state.connections };
+  const devices = state.devices.map((d) => ({ ...d, template_id: d.template_id ?? d.templateId ?? null }));
+  const body = { id: state.layoutId, name: state.name, devices, connections: state.connections };
   try {
     const adapter = state.storageMode === 'local' ? storage.local : storage.server;
     const layout = await adapter.saveLayout(body);
@@ -642,5 +753,6 @@ renderCables();
 renderPortsEditor();
 updateRemoveCableButton();
 updateDeleteLayoutButton();
+loadCustomDeviceTypes().then(() => refreshAddDeviceDropdown());
 refreshLoadLayoutOptions();
 setTimeout(refreshLoadLayoutOptions, 300);

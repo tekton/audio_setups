@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Device types — Audio gear layout</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/device-types.css" />
+</head>
+<body>
+  <header>
+    <h1>Device types</h1>
+    <a href="index.html" class="nav-link">← Layout</a>
+  </header>
+
+  <main class="device-types-page">
+    <section class="section">
+      <h2>Custom device types</h2>
+      <p class="hint">Define device templates that appear in the Layout page “Add device” dropdown. Port types (e.g. audio, power) can be used later to match like-to-like connections.</p>
+      <ul id="type-list" class="type-list"></ul>
+    </section>
+
+    <section class="section form-section">
+      <h2 id="form-title">Add device type</h2>
+      <form id="device-type-form">
+        <input type="hidden" id="template-id" />
+        <div class="field">
+          <label for="template-name">Name (id for dropdown)</label>
+          <input type="text" id="template-name" required placeholder="e.g. my_preamp" />
+        </div>
+        <div class="field">
+          <label for="template-label">Label (shown on canvas)</label>
+          <input type="text" id="template-label" placeholder="e.g. My Pre-amp" />
+        </div>
+        <div class="field">
+          <label>Input ports (name + type)</label>
+          <div id="input-ports-container" class="ports-container"></div>
+          <button type="button" id="btn-add-input-port" class="btn-secondary">+ Add input port</button>
+        </div>
+        <div class="field">
+          <label>Output ports (name + type)</label>
+          <div id="output-ports-container" class="ports-container"></div>
+          <button type="button" id="btn-add-output-port" class="btn-secondary">+ Add output port</button>
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="btn-save-local">Save locally</button>
+          <button type="button" id="btn-save-server">Save to server</button>
+          <button type="button" id="btn-export-json">Export JSON</button>
+          <label class="file-label"><input type="file" id="import-file" accept=".json" /> Import JSON</label>
+          <button type="button" id="btn-clear-form">Clear form</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script src="js/device-types.js" type="module"></script>
+</body>
+</html>
