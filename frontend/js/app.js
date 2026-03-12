@@ -107,6 +107,7 @@ function syncStorageModeFromUI() {
 }
 
 let dragState = null; // { type: 'cable', ... } | { type: 'move', deviceId, offsetX, offsetY, startX, startY }
+let touchCableState = null; // { fromDeviceId, fromPort, fromPortType } for tap-based cable connections on mobile
 
 const canvas = document.getElementById('canvas');
 const devicesLayer = document.getElementById('devices-layer');
@@ -298,8 +299,11 @@ function hideRubberBand() {
 
 function svgPoint(evt) {
   const pt = canvas.createSVGPoint();
-  pt.x = evt.clientX;
-  pt.y = evt.clientY;
+  // Handle both mouse and touch events
+  const clientX = evt.clientX !== undefined ? evt.clientX : (evt.touches?.[0]?.clientX ?? 0);
+  const clientY = evt.clientY !== undefined ? evt.clientY : (evt.touches?.[0]?.clientY ?? 0);
+  pt.x = clientX;
+  pt.y = clientY;
   return pt.matrixTransform(canvas.getScreenCTM().inverse());
 }
 
@@ -358,6 +362,25 @@ function showPortTypeMismatchMessage() {
     el.className = 'canvas-message';
     el.textContent = '';
   }, PORT_MISMATCH_DURATION_MS);
+}
+
+function showCableConnectionModeMessage() {
+  const el = document.getElementById('canvas-message');
+  if (!el) return;
+  el.textContent = 'Cable mode active. Tap an input port to connect.';
+  el.className = 'canvas-message visible cable-mode';
+}
+
+function clearCableConnectionMode() {
+  const el = document.getElementById('canvas-message');
+  if (el && el.classList.contains('cable-mode')) {
+    el.className = 'canvas-message';
+    el.textContent = '';
+  }
+  touchCableState = null;
+  hideRubberBand();
+  canvas.classList.remove('drawing');
+  document.querySelectorAll('.device-block.drag-source').forEach((el) => el.classList.remove('drag-source'));
 }
 
 function endCableDrag(toDeviceId, toPortName, toPortType) {
@@ -473,6 +496,7 @@ function onPointerUp(evt) {
 }
 
 function setupCanvasListeners() {
+  // Mouse events for desktop
   canvas.addEventListener('mousedown', (evt) => {
     const connectionId = evt.target.dataset?.connectionId;
     const port = evt.target.closest('.device-port');
@@ -511,7 +535,170 @@ function setupCanvasListeners() {
   canvas.addEventListener('mouseleave', () => {
     if (dragState?.type === 'cable') updateRubberBand(svgPoint({ clientX: 0, clientY: 0 }));
   });
+
+  // Touch events for mobile/tablet
+  canvas.addEventListener('touchstart', (evt) => {
+    if (evt.touches.length !== 1) return; // Only handle single touch
+    
+    const touch = evt.touches[0];
+    const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+    const connectionId = touchTarget?.dataset?.connectionId;
+    const port = touchTarget?.closest('.device-port');
+    const g = touchTarget?.closest('[data-device-id]');
+    
+    // If touching a cable, select it
+    if (connectionId) {
+      state.selectedConnectionId = connectionId;
+      state.selectedDeviceId = null;
+      renderDevices();
+      renderCables();
+      renderPortsEditor();
+      updateRemoveCableButton();
+      return;
+    }
+    
+    // If touching a port and in cable mode, try to complete the connection
+    if (touchCableState && port && port.dataset.portIo === 'input' && g) {
+      evt.preventDefault();
+      const toDeviceId = g.dataset.deviceId;
+      const toPortName = port.dataset.port || '';
+      const toPortType = port.dataset.portType || '';
+      
+      if (toDeviceId === touchCableState.fromDeviceId) {
+        // Can't connect a device to itself
+        clearCableConnectionMode();
+        return;
+      }
+      
+      // Validate port types
+      const fromType = (touchCableState.fromPortType || 'audio').toLowerCase();
+      const toType = (toPortType || 'audio').toLowerCase();
+      if (fromType !== toType) {
+        showPortTypeMismatchMessage();
+        clearCableConnectionMode();
+        return;
+      }
+      
+      // Create the connection
+      state.connections.push({
+        id: genId(),
+        from_device_id: touchCableState.fromDeviceId,
+        to_device_id: toDeviceId,
+        from_port: touchCableState.fromPort || '',
+        to_port: toPortName || '',
+        from_port_type: touchCableState.fromPortType || '',
+        to_port_type: toPortType || '',
+      });
+      
+      clearCableConnectionMode();
+      renderCables();
+      return;
+    }
+    
+    // If touching an output port and not in cable mode, start cable mode
+    if (port && port.dataset.portIo === 'output' && g && !touchCableState) {
+      evt.preventDefault();
+      const deviceId = g.dataset.deviceId;
+      const portName = port.dataset.port || '';
+      const portType = port.dataset.portType || '';
+      
+      touchCableState = {
+        fromDeviceId: deviceId,
+        fromPort: portName,
+        fromPortType: portType,
+      };
+      
+      const dev = getDeviceById(deviceId);
+      if (dev) {
+        const start = getPortPosition(dev, portName, 'output');
+        showRubberBand(start.x, start.y, start.x, start.y);
+        const color = getPortTypeColor(portType || 'audio');
+        rubberBand.style.stroke = color;
+        rubberBand.style.display = '';
+        const rubberArrow = canvas.querySelector('#arrowhead polygon');
+        if (rubberArrow) rubberArrow.setAttribute('fill', color);
+        canvas.classList.add('drawing');
+        document.querySelector(`[data-device-id="${deviceId}"] rect`)?.classList.add('drag-source');
+        showCableConnectionModeMessage();
+      }
+      return;
+    }
+    
+    // If touching a device (but not a port), and not in cable mode, start device move
+    if (g && !port && !touchCableState) {
+      evt.preventDefault();
+      const pt = svgPoint(evt);
+      state.selectedDeviceId = g.dataset.deviceId;
+      state.selectedConnectionId = null;
+      startDeviceMove(g.dataset.deviceId, pt);
+      document.addEventListener('touchmove', onTouchMove);
+      document.addEventListener('touchend', onTouchEnd);
+    }
+    
+    // If background tap, deselect
+    if (!g && !touchCableState) {
+      state.selectedDeviceId = null;
+      state.selectedConnectionId = null;
+      renderDevices();
+      renderCables();
+      renderPortsEditor();
+      updateRemoveCableButton();
+    }
+  });
+  
+  function onTouchMove(evt) {
+    if (!dragState || dragState.type !== 'move') {
+      // Also update rubber band if in cable mode
+      if (touchCableState && evt.touches.length > 0) {
+        const pt = svgPoint(evt);
+        showRubberBand(
+          dragState?.fromX ?? 0,
+          dragState?.fromY ?? 0,
+          pt.x,
+          pt.y
+        );
+      }
+      return;
+    }
+    const pt = svgPoint(evt);
+    updateDeviceMove(pt);
+  }
+  
+  function onTouchEnd(evt) {
+    if (dragState && dragState.type === 'move') {
+      endDeviceMove();
+    }
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('touchend', onTouchEnd);
+    
+    // If user taps somewhere else while in cable mode, cancel it
+    if (touchCableState && evt.touches.length === 0) {
+      // Don't cancel automatically - let user explicitly tap a port or cancel
+    }
+  }
+  
+  // Cancel cable mode when tapping anywhere outside ports
+  canvas.addEventListener('touchend', (evt) => {
+    // Allow taps on ports to handle connections
+    if (evt.touches.length === 0 && touchCableState) {
+      // Check if the touch ended on an input port
+      const touch = evt.changedTouches[0];
+      const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+      const port = touchTarget?.closest('.device-port');
+      
+      // Only auto-cancel if not ending on a port
+      if (!port || port.dataset.portIo !== 'input') {
+        // Allow a small delay for multi-touch handling
+        setTimeout(() => {
+          if (touchCableState && !dragState) {
+            clearCableConnectionMode();
+          }
+        }, 50);
+      }
+    }
+  });
 }
+
 
 const DEVICE_LABELS = { dac: 'DAC', turntable: 'Turntable', phono: 'Phono pre-amp', headphone_amp: 'Headphone amp', eq: 'EQ', speaker: 'Speaker' };
 

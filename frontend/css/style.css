@@ -291,6 +291,12 @@ main.canvas-wrapper {
   border: 1px solid rgba(160, 80, 40, 0.8);
 }
 
+.canvas-message.cable-mode {
+  background: rgba(60, 140, 180, 0.92);
+  color: #fff;
+  border: 1px solid rgba(40, 120, 160, 0.8);
+}
+
 #canvas {
   width: 100%;
   height: 100%;
@@ -360,4 +366,40 @@ main.canvas-wrapper {
 .rubber-band {
   pointer-events: none;
   stroke: var(--cable-color);
+}
+
+/* Touch and mobile-friendly adjustments */
+@media (hover: none) and (pointer: coarse) {
+  /* Mobile/touch device styles */
+  
+  /* Increase touch target size for ports */
+  .device-port {
+    pointer-events: all;
+  }
+  
+  .device-port:active {
+    r: 7;
+    opacity: 0.8;
+  }
+  
+  /* Better visual feedback on touch */
+  .device-block {
+    cursor: pointer;
+  }
+  
+  .device-block:active {
+    opacity: 0.8;
+  }
+  
+  /* Disable text selection on canvas area */
+  #canvas {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+
+/* Ensure proper touch handling */
+svg {
+  touch-action: none;
 }
