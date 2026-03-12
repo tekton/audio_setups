@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Gear Layout - Test Suite Runner</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+
+    header {
+      max-width: 1200px;
+      margin: 0 auto 30px;
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 2rem;
+      color: #fff;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 0.95rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: #2d2d2d;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #007bff;
+    }
+
+    .stat-card.passed {
+      border-left-color: #28a745;
+    }
+
+    .stat-card.failed {
+      border-left-color: #dc3545;
+    }
+
+    .stat-card.total {
+      border-left-color: #6c757d;
+    }
+
+    .stat-label {
+      color: #888;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .stat-card.passed .stat-value {
+      color: #28a745;
+    }
+
+    .stat-card.failed .stat-value {
+      color: #dc3545;
+    }
+
+    .duration {
+      font-size: 0.9rem;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    .tests-section {
+      margin-bottom: 40px;
+    }
+
+    .tests-section h2 {
+      font-size: 1.3rem;
+      color: #fff;
+      margin: 0 0 15px 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #444;
+    }
+
+    .test-results {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .test-result {
+      background: #252525;
+      padding: 15px;
+      border-radius: 4px;
+      border-left: 4px solid #6c757d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .test-result.pass {
+      border-left-color: #28a745;
+      background: rgba(40, 167, 69, 0.1);
+    }
+
+    .test-result.fail {
+      border-left-color: #dc3545;
+      background: rgba(220, 53, 69, 0.1);
+    }
+
+    .test-result:hover {
+      background: #2d2d2d;
+    }
+
+    .test-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .test-icon {
+      font-size: 1.2rem;
+    }
+
+    .test-result.pass .test-icon {
+      color: #28a745;
+    }
+
+    .test-result.fail .test-icon {
+      color: #dc3545;
+    }
+
+    .test-status {
+      font-size: 0.85rem;
+      color: #888;
+      margin-left: 10px;
+    }
+
+    .error-message {
+      background: rgba(220, 53, 69, 0.1);
+      border: 1px solid #dc3545;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      color: #ff6b6b;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 1.2rem;
+      color: #888;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #444;
+      border-top-color: #007bff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .summary {
+      background: #2d2d2d;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+      border-left: 4px solid #007bff;
+    }
+
+    .summary h3 {
+      margin: 0 0 15px 0;
+      color: #fff;
+    }
+
+    .summary-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .summary-list li {
+      padding: 8px 0;
+      color: #aaa;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+    }
+
+    .summary-list li::before {
+      content: '• ';
+      color: #dc3545;
+      margin-right: 8px;
+    }
+
+    .emoji-status {
+      display: inline-block;
+      margin-right: 5px;
+    }
+
+    .section-title {
+      color: #888;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      padding-left: 15px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🧪 Audio Gear Layout - Test Suite</h1>
+    <p class="subtitle">Comprehensive testing for layout creation, port types, device types, and end-to-end workflows</p>
+    <div class="controls">
+      <button id="btn-run" onclick="runTests()">Run Tests</button>
+      <button id="btn-clear" onclick="clearResults()">Clear Results</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="stats-container" style="display: none;">
+      <div class="stats">
+        <div class="stat-card passed">
+          <div class="stat-label">✅ Passed</div>
+          <div class="stat-value" id="stat-passed">0</div>
+        </div>
+        <div class="stat-card failed">
+          <div class="stat-label">❌ Failed</div>
+          <div class="stat-value" id="stat-failed">0</div>
+        </div>
+        <div class="stat-card total">
+          <div class="stat-label">📊 Total</div>
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="duration" id="duration">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+      <div class="spinner"></div>
+      Running tests...
+    </div>
+
+    <div id="results-container"></div>
+
+    <div id="summary-container" style="display: none;" class="summary">
+      <h3>Summary</h3>
+      <ul class="summary-list" id="summary-list"></ul>
+    </div>
+  </div>
+
+  <script src="test-suite.js"></script>
+  <script>
+    let testRunner = null;
+
+    async function runTests() {
+      const btnRun = document.getElementById('btn-run');
+      const loading = document.getElementById('loading');
+      const resultsContainer = document.getElementById('results-container');
+      const statsContainer = document.getElementById('stats-container');
+      const summaryContainer = document.getElementById('summary-container');
+
+      btnRun.disabled = true;
+      loading.style.display = '';
+      resultsContainer.innerHTML = '';
+      statsContainer.style.display = 'none';
+      summaryContainer.style.display = 'none';
+
+      // Setup test suite
+      testRunner = await setupTestSuite();
+
+      // Run tests
+      const startTime = performance.now();
+      const results = await testRunner.run();
+      const endTime = performance.now();
+      const duration = (endTime - startTime).toFixed(2);
+
+      // Update stats
+      document.getElementById('stat-passed').textContent = results.passed;
+      document.getElementById('stat-failed').textContent = results.failed;
+      document.getElementById('stat-total').textContent = results.passed + results.failed;
+      document.getElementById('duration').textContent = `Duration: ${duration}ms`;
+
+      // Group results by section
+      const sections = groupTestsBySection(testRunner.tests);
+      renderResults(sections, results);
+
+      // Render summary
+      if (results.errors.length > 0) {
+        renderSummary(results.errors);
+      }
+
+      // Show stats
+      statsContainer.style.display = '';
+      if (results.errors.length > 0) {
+        summaryContainer.style.display = '';
+      }
+
+      loading.style.display = 'none';
+      btnRun.disabled = false;
+    }
+
+    function clearResults() {
+      document.getElementById('results-container').innerHTML = '';
+      document.getElementById('stats-container').style.display = 'none';
+      document.getElementById('summary-container').style.display = 'none';
+      document.getElementById('btn-run').disabled = false;
+    }
+
+    function groupTestsBySection(tests) {
+      const sections = {};
+      tests.forEach((test) => {
+        const match = test.name.match(/^([A-Za-z0-9.]+):\s/);
+        const sectionKey = match ? match[1] : 'Other';
+        if (!sections[sectionKey]) {
+          sections[sectionKey] = [];
+        }
+        sections[sectionKey].push(test);
+      });
+      return sections;
+    }
+
+    function renderResults(sections, results) {
+      const container = document.getElementById('results-container');
+      const errorMap = new Map(results.errors.map((e) => [e.name, e.error]));
+
+      const sectionOrder = ['Layout', 'Port Types', 'Device Types', 'E2E'];
+      const orderedSections = sectionOrder.filter((s) => sections[s]).map((s) => ({
+        key: s,
+        tests: sections[s],
+      }));
+
+      orderedSections.forEach((section) => {
+        const sectionDiv = document.createElement('div');
+        sectionDiv.className = 'tests-section';
+
+        const titleDiv = document.createElement('h2');
+        titleDiv.textContent = getSectionLabel(section.key);
+        sectionDiv.appendChild(titleDiv);
+
+        const resultsDiv = document.createElement('div');
+        resultsDiv.className = 'test-results';
+
+        section.tests.forEach((test) => {
+          const passed = !errorMap.has(test.name);
+          const testDiv = document.createElement('div');
+          testDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'test-name';
+          nameDiv.innerHTML = `
+            <span class="test-icon">${passed ? '✅' : '❌'}</span>
+            <span>${test.name}</span>
+            <span class="test-status">${passed ? 'PASS' : 'FAIL'}</span>
+          `;
+          testDiv.appendChild(nameDiv);
+
+          if (!passed) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = errorMap.get(test.name);
+            testDiv.appendChild(errorDiv);
+          }
+
+          resultsDiv.appendChild(testDiv);
+        });
+
+        sectionDiv.appendChild(resultsDiv);
+        container.appendChild(sectionDiv);
+      });
+    }
+
+    function getSectionLabel(key) {
+      const labels = {
+        Layout: '📦 Layout Tests',
+        'Port Types': '🔌 Port Type Tests',
+        'Device Types': '🎛️ Device Type Tests',
+        E2E: '🔄 End-to-End Tests',
+      };
+      return labels[key] || key;
+    }
+
+    function renderSummary(errors) {
+      const summaryList = document.getElementById('summary-list');
+      summaryList.innerHTML = '';
+
+      errors.forEach(({ name, error }) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${name}</strong><br>${error}`;
+        summaryList.appendChild(li);
+      });
+    }
+
+    // Auto-run tests on page load (optional, comment out if you prefer manual run)
+    // window.addEventListener('load', () => {
+    //   setTimeout(() => runTests(), 500);
+    // });
+  </script>
+</body>
+</html>

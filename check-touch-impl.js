@@ -98,7 +98,7 @@ if (failed === 0) {
   console.log('✓ All checks passed! Touch implementation looks good.');
   console.log('\nNext steps:');
   console.log('1. Start the app with: docker-compose up');
-  console.log('2. Open http://localhost:3000 on a mobile device or browser with touch emulation');
+  console.log('2. Open http://localhost:7002 on a mobile device or browser with touch emulation');
   console.log('3. Test:');
   console.log('   - Tap output port → cable mode activates');
   console.log('   - Move finger → rubber band follows');

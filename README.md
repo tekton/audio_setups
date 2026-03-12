@@ -12,9 +12,9 @@ From the project root:
 docker compose up --build
 ```
 
-- **Frontend**: http://localhost:3000  
-- **Backend API**: http://localhost:8000  
-- **Postgres**: localhost:5432 (user `layout`, password `layout`, db `audio_gear_layout`)
+- **Frontend**: http://localhost:7002  
+- **Backend API**: http://localhost:7001  
+- **Postgres**: localhost:7432 (user `layout`, password `layout`, db `audio_gear_layout`)
 
 Layouts are stored in Postgres (user/account tables can be added later). The backend uses the same API; no code changes needed.
 
@@ -38,7 +38,7 @@ cd frontend
 python -m http.server 3000
 ```
 
-Open http://localhost:3000. The frontend talks to the backend at http://localhost:8000 (edit `API_BASE` in `frontend/js/app.js` if your backend runs elsewhere).
+Open http://localhost:3000. The frontend talks to the backend at http://localhost:8000 (edit `API_BASE` in `frontend/js/app.js` if your backend runs elsewhere). If using docker-compose, the frontend is at http://localhost:7002 and backend at http://localhost:7001.
 
 ## Usage
 

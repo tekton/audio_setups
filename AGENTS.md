@@ -15,3 +15,5 @@
 ## Engineering
 
 [docs/ENGINEERING.md](docs/ENGINEERING.md) for full guidelines. Summary: simplicity first, minimal deps, single source of truth, cable drag-and-drop with feedback, keep docs updated.
+
+Do not try to commit to git, allow the user to do that
