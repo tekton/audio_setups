@@ -1,0 +1,122 @@
+[
+  {
+    "id": "xlr_balanced",
+    "name": "XLR Balanced",
+    "type": "xlr_balanced",
+    "color": "#2979FF",
+    "color_name": "Blue",
+    "notes": "Pro audio standard, balanced mic/line"
+  },
+  {
+    "id": "trs_quarter",
+    "name": "TRS 1/4\" Balanced",
+    "type": "trs_quarter",
+    "color": "#43A047",
+    "color_name": "Green",
+    "notes": "Balanced line/insert"
+  },
+  {
+    "id": "ts_quarter",
+    "name": "TS 1/4\" Unbalanced",
+    "type": "ts_quarter",
+    "color": "#E53935",
+    "color_name": "Red",
+    "notes": "Instrument/guitar, mono unbalanced"
+  },
+  {
+    "id": "trs_mini",
+    "name": "3.5mm TRS Stereo",
+    "type": "trs_mini",
+    "color": "#7CB342",
+    "color_name": "Light Green",
+    "notes": "Consumer headphone/mini stereo"
+  },
+  {
+    "id": "rca",
+    "name": "RCA Phono",
+    "type": "rca",
+    "color": "#FDD835",
+    "color_name": "Yellow",
+    "notes": "Consumer analog (hi-fi, tape)"
+  },
+  {
+    "id": "phono",
+    "name": "Phono (Turntable)",
+    "type": "phono",
+    "color": "#AB47BC",
+    "color_name": "Purple",
+    "notes": "RIAA phono stage input"
+  },
+  {
+    "id": "speakon",
+    "name": "Speakon",
+    "type": "speakon",
+    "color": "#FF5722",
+    "color_name": "Deep Orange",
+    "notes": "Speaker connector (NL2/NL4/NL8)"
+  },
+  {
+    "id": "speaker_binding",
+    "name": "Speaker Binding Post",
+    "type": "speaker_binding",
+    "color": "#FF8A65",
+    "color_name": "Light Orange",
+    "notes": "Amp/speaker terminals; accepts bare wire, banana plugs, and spade connectors"
+  },
+  {
+    "id": "spdif_coax",
+    "name": "S/PDIF Coaxial",
+    "type": "spdif_coax",
+    "color": "#FF8F00",
+    "color_name": "Amber",
+    "notes": "Digital coax (RCA connector)"
+  },
+  {
+    "id": "toslink",
+    "name": "TOSLINK Optical",
+    "type": "toslink",
+    "color": "#00ACC1",
+    "color_name": "Cyan",
+    "notes": "Optical digital (Toslink/ADAT)"
+  },
+  {
+    "id": "aes_ebu",
+    "name": "AES/EBU",
+    "type": "aes_ebu",
+    "color": "#1565C0",
+    "color_name": "Dark Blue",
+    "notes": "Professional digital (XLR)"
+  },
+  {
+    "id": "hdmi_arc",
+    "name": "HDMI ARC / eARC",
+    "type": "hdmi_arc",
+    "color": "#546E7A",
+    "color_name": "Slate",
+    "notes": "Home theater audio return"
+  },
+  {
+    "id": "usb_audio",
+    "name": "USB Audio",
+    "type": "usb_audio",
+    "color": "#1E88E5",
+    "color_name": "Light Blue",
+    "notes": "Class-compliant USB audio"
+  },
+  {
+    "id": "midi_din",
+    "name": "MIDI DIN-5",
+    "type": "midi_din",
+    "color": "#7B1FA2",
+    "color_name": "Violet",
+    "notes": "5-pin MIDI"
+  },
+  {
+    "id": "dante",
+    "name": "Dante / AoIP",
+    "type": "dante",
+    "color": "#00695C",
+    "color_name": "Teal",
+    "notes": "Network audio over IP"
+  }
+]
