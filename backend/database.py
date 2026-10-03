@@ -13,7 +13,7 @@ class LayoutRow(Base):
     __tablename__ = "layouts"
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False, default="Untitled layout")
-    data = Column(JSON, nullable=False, default=dict)  # { "devices": [], "connections": [] }
+    data = Column(JSON, nullable=False, default=dict)  # { "devices": [], "connections": [], "racks": [] }
 
 
 _engine = None

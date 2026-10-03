@@ -15,4 +15,4 @@ build
 *.tmp
 *.env
 *.coverage
-.coverage.*
+.coverage.*.pytest_cache

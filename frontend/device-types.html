@@ -36,6 +36,18 @@
           <input type="text" id="template-label" placeholder="e.g. My Pre-amp" />
         </div>
         <div class="field">
+          <label for="template-width">Panel width</label>
+          <select id="template-width">
+            <option value="19">19"</option>
+            <option value="10">10"</option>
+            <option value="6">6"</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="template-height">Height (U)</label>
+          <input type="number" id="template-height" min="1" max="60" value="1" />
+        </div>
+        <div class="field">
           <label>Input ports (name + type)</label>
           <div id="input-ports-container" class="ports-container"></div>
           <button type="button" id="btn-add-input-port" class="btn-secondary">+ Add input port</button>

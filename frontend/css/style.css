@@ -207,7 +207,8 @@ header nav {
   font-size: 0.85rem;
 }
 
-.ports-editor input {
+.ports-editor input,
+.ports-editor select {
   padding: 0.3rem 0.5rem;
   background: #444;
   border: 1px solid #555;
@@ -338,6 +339,59 @@ main.canvas-wrapper {
 .device-block.selected {
   stroke: #e0b020;
   stroke-width: 3;
+}
+
+.rack-frame {
+  cursor: grab;
+  fill: #151515;
+  stroke: #5a5a5a;
+  stroke-width: 2;
+  rx: 4;
+}
+
+.rack-frame.selected {
+  stroke: #e0b020;
+  stroke-width: 3;
+}
+
+.rack-frame.drop-target {
+  stroke: var(--cable-color);
+  stroke-width: 3;
+}
+
+.rack-slot-line {
+  stroke: #2e2e2e;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+body[data-mode="classic"] .rack-only {
+  display: none;
+}
+
+.toolbar-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.ports-editor input[type="checkbox"] {
+  min-width: 0;
+}
+
+.rack-shared-mark {
+  font-size: 24px;
+  font-weight: bold;
+  fill: #e0b020;
+  text-anchor: middle;
+  pointer-events: all;
+}
+
+.rack-label {
+  font-size: 11px;
+  fill: #9a9a9a;
+  pointer-events: none;
 }
 
 .device-label {

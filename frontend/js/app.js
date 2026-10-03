@@ -3,9 +3,13 @@
  * to another to create a cable (connection). State synced to backend.
  */
 
+import * as geo from './rack-geometry.js';
+import { U_PX, RACK_PAD, RACK_HEADER } from './rack-geometry.js';
+
+// 'classic' is the freeform view: no racks, ports on the sides by default. Layouts are kept per mode.
+const MODE = document.body.dataset.mode === 'classic' ? 'classic' : 'rack';
+const DEFAULT_PORT_LAYOUT = MODE === 'classic' ? 'sides' : 'top_bottom';
 const API_BASE = 'http://localhost:7001';
-const DEVICE_W = 120;
-const DEVICE_H = 56;
 const PORT_R = 5;
 const LOCAL_STORAGE_KEY = 'audio_gear_layouts';
 const STORAGE_MODE_KEY = 'audio_gear_storage_mode';
@@ -20,8 +24,12 @@ let state = {
   name: 'Untitled layout',
   devices: [],
   connections: [],
+  racks: [],
+  portLayout: DEFAULT_PORT_LAYOUT, // canvas-wide default; a device's own port_layout overrides it
   selectedDeviceId: null,
   selectedConnectionId: null,
+  selectedRackId: null,
+  dropRackId: null, // rack highlighted as the drop target while dragging a device
   storageMode: (() => {
     try {
       const m = localStorage.getItem(STORAGE_MODE_KEY);
@@ -70,7 +78,7 @@ const storage = {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(layouts));
     },
     async listLayouts() {
-      return Promise.resolve(this._read().map((l) => ({ id: l.id, name: l.name || l.id })));
+      return Promise.resolve(this._read().map((l) => ({ id: l.id, name: l.name || l.id, mode: l.mode })));
     },
     async getLayout(id) {
       const list = this._read();
@@ -81,7 +89,7 @@ const storage = {
     async saveLayout(layout) {
       const list = this._read();
       const id = layout.id || `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-      const payload = { id, name: layout.name || 'Untitled layout', devices: layout.devices || [], connections: layout.connections || [] };
+      const payload = { id, name: layout.name || 'Untitled layout', devices: layout.devices || [], connections: layout.connections || [], racks: layout.racks || [], port_layout: layout.port_layout || DEFAULT_PORT_LAYOUT, mode: layout.mode || 'rack' };
       const idx = list.findIndex((l) => l.id === id);
       if (idx >= 0) list[idx] = payload;
       else list.push(payload);
@@ -106,10 +114,11 @@ function syncStorageModeFromUI() {
   if (sel && (sel.value === 'local' || sel.value === 'server')) state.storageMode = sel.value;
 }
 
-let dragState = null; // { type: 'cable', ... } | { type: 'move', deviceId, offsetX, offsetY, startX, startY }
+let dragState = null; // { type: 'cable', ... } | { type: 'move', deviceId, offsetX, offsetY, startX, startY, origin } | { type: 'move-rack', rackId, offsetX, offsetY }
 let touchCableState = null; // { fromDeviceId, fromPort, fromPortType } for tap-based cable connections on mobile
 
 const canvas = document.getElementById('canvas');
+const racksLayer = document.getElementById('racks-layer');
 const devicesLayer = document.getElementById('devices-layer');
 const cablesLayer = document.getElementById('cables-layer');
 const rubberBand = document.getElementById('rubber-band');
@@ -151,26 +160,51 @@ async function loadPortTypes() {
   }
 }
 
+function getPortLayout(device) {
+  return device.port_layout || state.portLayout;
+}
+
 function getPortByName(device, portName, io) {
   const ports = normalizePorts(io === 'input' ? device.input_ports : device.output_ports);
   return ports.find((p) => p.name === portName);
 }
 
+function getRackById(id) {
+  return state.racks.find((r) => r.id === id);
+}
+
+// Racked devices (and one being lifted out of a rack) are drawn at rack scale; free devices keep the legacy box.
+function isRackScale(device) {
+  return !!device.rack_id || (dragState?.type === 'move' && dragState.deviceId === device.id && dragState.origin.rack_id);
+}
+
+function getDeviceSize(device) {
+  return geo.getDeviceSize(device, isRackScale(device));
+}
+
+function getDevicePosition(device) {
+  return geo.getDevicePosition(device, state.racks);
+}
+
+function checkRackFit(rack, device, rackU, rackX) {
+  return geo.checkRackFit(rack, device, rackU, rackX, state.devices);
+}
+
+function findRackAtPoint(pt) {
+  return geo.findRackAtPoint(state.racks, pt);
+}
+
 function getDeviceCenter(device) {
-  return {
-    x: device.position.x + DEVICE_W / 2,
-    y: device.position.y + DEVICE_H / 2,
-  };
+  const pos = getDevicePosition(device);
+  const { w, h } = getDeviceSize(device);
+  return { x: pos.x + w / 2, y: pos.y + h / 2 };
 }
 
 function getPortPosition(device, portName, io) {
   const ports = normalizePorts(io === 'input' ? device.input_ports : device.output_ports);
   const idx = ports.findIndex((p) => p.name === portName);
   if (idx < 0) return getDeviceCenter(device);
-  const n = ports.length;
-  const x = io === 'input' ? device.position.x : device.position.x + DEVICE_W;
-  const y = device.position.y + (n === 1 ? DEVICE_H / 2 : (idx + 1) * (DEVICE_H / (n + 1)));
-  return { x, y };
+  return geo.portPoint(getDevicePosition(device), getDeviceSize(device), idx, ports.length, io, getPortLayout(device));
 }
 
 function getConnectionEndpoints(c) {
@@ -193,52 +227,89 @@ function renderDevices() {
   state.devices.forEach((d) => {
     const inputs = normalizePorts(d.input_ports);
     const outputs = normalizePorts(d.output_ports);
+    const pos = getDevicePosition(d);
+    const { w: devW, h: devH } = getDeviceSize(d);
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.dataset.deviceId = d.id;
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('class', 'device-block' + (d.id === state.selectedDeviceId ? ' selected' : ''));
-    rect.setAttribute('x', d.position.x);
-    rect.setAttribute('y', d.position.y);
-    rect.setAttribute('width', DEVICE_W);
-    rect.setAttribute('height', DEVICE_H);
+    rect.setAttribute('x', pos.x);
+    rect.setAttribute('y', pos.y);
+    rect.setAttribute('width', devW);
+    rect.setAttribute('height', devH);
     g.append(rect);
-    inputs.forEach((p, i) => {
-      const n = inputs.length;
-      const x = d.position.x;
-      const y = d.position.y + (n === 1 ? DEVICE_H / 2 : (i + 1) * (DEVICE_H / (n + 1)));
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('class', 'device-port port-input');
-      circle.setAttribute('cx', x);
-      circle.setAttribute('cy', y);
-      circle.setAttribute('r', PORT_R);
-      circle.style.fill = getPortTypeColor(p.type);
-      circle.dataset.port = p.name;
-      circle.dataset.portType = p.type || 'audio';
-      circle.dataset.portIo = 'input';
-      g.append(circle);
-    });
-    outputs.forEach((p, i) => {
-      const n = outputs.length;
-      const x = d.position.x + DEVICE_W;
-      const y = d.position.y + (n === 1 ? DEVICE_H / 2 : (i + 1) * (DEVICE_H / (n + 1)));
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('class', 'device-port port-output');
-      circle.setAttribute('cx', x);
-      circle.setAttribute('cy', y);
-      circle.setAttribute('r', PORT_R);
-      circle.style.fill = getPortTypeColor(p.type);
-      circle.dataset.port = p.name;
-      circle.dataset.portType = p.type || 'audio';
-      circle.dataset.portIo = 'output';
-      g.append(circle);
+    [['input', inputs], ['output', outputs]].forEach(([io, ports]) => {
+      ports.forEach((p) => {
+        const at = getPortPosition(d, p.name, io);
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('class', `device-port port-${io}`);
+        circle.setAttribute('cx', at.x);
+        circle.setAttribute('cy', at.y);
+        circle.setAttribute('r', PORT_R);
+        circle.style.fill = getPortTypeColor(p.type);
+        circle.dataset.port = p.name;
+        circle.dataset.portType = p.type || 'audio';
+        circle.dataset.portIo = io;
+        const tip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        tip.textContent = `${p.name} (${p.type || 'audio'})`;
+        circle.append(tip);
+        g.append(circle);
+      });
     });
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('class', 'device-label');
-    label.setAttribute('x', d.position.x + DEVICE_W / 2);
-    label.setAttribute('y', d.position.y + DEVICE_H / 2 + 4);
+    label.setAttribute('x', pos.x + devW / 2);
+    label.setAttribute('y', pos.y + devH / 2 + 4);
     label.textContent = d.label || d.type || d.id;
     g.append(label);
     devicesLayer.appendChild(g);
+  });
+}
+
+function renderRacks() {
+  racksLayer.innerHTML = '';
+  state.racks.forEach((r) => {
+    const { w, h } = geo.getRackSize(r);
+    const g = document.createElementNS(svgNs, 'g');
+    g.dataset.rackId = r.id;
+    const frame = document.createElementNS(svgNs, 'rect');
+    const cls = ['rack-frame'];
+    if (r.id === state.selectedRackId) cls.push('selected');
+    if (r.id === state.dropRackId) cls.push('drop-target');
+    frame.setAttribute('class', cls.join(' '));
+    frame.setAttribute('x', r.position.x);
+    frame.setAttribute('y', r.position.y);
+    frame.setAttribute('width', w);
+    frame.setAttribute('height', h);
+    g.append(frame);
+    for (let u = 1; u < r.height_u; u++) {
+      const y = r.position.y + RACK_HEADER + u * U_PX;
+      const line = document.createElementNS(svgNs, 'line');
+      line.setAttribute('class', 'rack-slot-line');
+      line.setAttribute('x1', r.position.x + RACK_PAD);
+      line.setAttribute('x2', r.position.x + w - RACK_PAD);
+      line.setAttribute('y1', y);
+      line.setAttribute('y2', y);
+      g.append(line);
+    }
+    geo.sharedRows(r, state.devices).forEach(({ u, count }) => {
+      const mark = document.createElementNS(svgNs, 'text');
+      mark.setAttribute('class', 'rack-shared-mark');
+      mark.setAttribute('x', r.position.x + w - RACK_PAD / 2);
+      mark.setAttribute('y', r.position.y + RACK_HEADER + (r.height_u - u) * U_PX + U_PX / 2 + 6);
+      mark.textContent = '*';
+      const tip = document.createElementNS(svgNs, 'title');
+      tip.textContent = `U${u}: ${count} items share this row. Needs a shelf or custom mounting plate.`;
+      mark.append(tip);
+      g.append(mark);
+    });
+    const label = document.createElementNS(svgNs, 'text');
+    label.setAttribute('class', 'rack-label');
+    label.setAttribute('x', r.position.x + RACK_PAD);
+    label.setAttribute('y', r.position.y + RACK_HEADER - 6);
+    label.textContent = r.label || `${r.width_in}" ${r.height_u}U rack`;
+    g.append(label);
+    racksLayer.appendChild(g);
   });
 }
 
@@ -325,23 +396,67 @@ function startCableDrag(deviceId, portName, portType, pt) {
   document.querySelector(`[data-device-id="${deviceId}"] rect`)?.classList.add('drag-source');
 }
 
+// Lifts the device out of its rack (if any) for the duration of the drag; `origin` lets a failed drop put it back.
 function startDeviceMove(deviceId, pt, isTouchDrag = false) {
   const dev = getDeviceById(deviceId);
   if (!dev) return;
-  const offsetX = pt.x - dev.position.x;
-  const offsetY = pt.y - dev.position.y;
-  dragState = { type: 'move', deviceId, offsetX, offsetY, startX: dev.position.x, startY: dev.position.y, isTouchDrag };
+  const origin = { rack_id: dev.rack_id || null, rack_u: dev.rack_u ?? null, rack_x: dev.rack_x || 0, position: { ...dev.position } };
+  const start = { ...getDevicePosition(dev) };
+  dragState = { type: 'move', deviceId, offsetX: pt.x - start.x, offsetY: pt.y - start.y, startX: start.x, startY: start.y, isTouchDrag, origin };
+  dev.position = start;
+  dev.rack_id = null;
+  dev.rack_u = null;
+  dev.rack_x = 0;
   canvas.classList.add('moving');
+}
+
+function restoreDeviceOrigin(dev, origin) {
+  dev.rack_id = origin.rack_id;
+  dev.rack_u = origin.rack_u;
+  dev.rack_x = origin.rack_x;
+  dev.position = origin.position;
 }
 
 function updateDeviceMove(pt) {
   if (!dragState || dragState.type !== 'move') return;
   const dev = getDeviceById(dragState.deviceId);
   if (!dev) return;
-  dev.position.x = pt.x - dragState.offsetX;
-  dev.position.y = pt.y - dragState.offsetY;
+  dev.position = { x: pt.x - dragState.offsetX, y: pt.y - dragState.offsetY };
+  state.dropRackId = findRackAtPoint(getDeviceCenter(dev))?.id ?? null;
+  renderRacks();
   renderDevices();
   renderCables();
+}
+
+function startRackMove(rackId, pt) {
+  const rack = getRackById(rackId);
+  if (!rack) return;
+  dragState = { type: 'move-rack', rackId, offsetX: pt.x - rack.position.x, offsetY: pt.y - rack.position.y };
+  canvas.classList.add('moving');
+}
+
+function updateRackMove(pt) {
+  if (!dragState || dragState.type !== 'move-rack') return;
+  const rack = getRackById(dragState.rackId);
+  if (!rack) return;
+  rack.position = { x: pt.x - dragState.offsetX, y: pt.y - dragState.offsetY };
+  renderRacks();
+  renderDevices();
+  renderCables();
+}
+
+function endRackMove() {
+  if (!dragState || dragState.type !== 'move-rack') return;
+  state.selectedRackId = dragState.rackId;
+  state.selectedDeviceId = null;
+  state.selectedConnectionId = null;
+  dragState = null;
+  canvas.classList.remove('moving');
+  renderRacks();
+  renderDevices();
+  renderCables();
+  renderPortsEditor();
+  updateRemoveCableButton();
 }
 
 function updateRubberBand(pt) {
@@ -352,16 +467,20 @@ function updateRubberBand(pt) {
 
 const PORT_MISMATCH_DURATION_MS = 3500;
 
-function showPortTypeMismatchMessage() {
+function showWarningMessage(text) {
   const el = document.getElementById('canvas-message');
   if (!el) return;
-  el.textContent = 'Port types don\'t match. Connect the same type (e.g. audio to audio).';
+  el.textContent = text;
   el.className = 'canvas-message visible port-mismatch';
-  clearTimeout(showPortTypeMismatchMessage._timeout);
-  showPortTypeMismatchMessage._timeout = setTimeout(() => {
+  clearTimeout(showWarningMessage._timeout);
+  showWarningMessage._timeout = setTimeout(() => {
     el.className = 'canvas-message';
     el.textContent = '';
   }, PORT_MISMATCH_DURATION_MS);
+}
+
+function showPortTypeMismatchMessage() {
+  showWarningMessage('Port types don\'t match. Connect the same type (e.g. audio to audio).');
 }
 
 function showCableConnectionModeMessage() {
@@ -425,36 +544,72 @@ function endDeviceMove() {
     return;
   }
   const dev = getDeviceById(dragState.deviceId);
-  const dx = dev ? dev.position.x - dragState.startX : 0;
-  const dy = dev ? dev.position.y - dragState.startY : 0;
-  const moved = Math.hypot(dx, dy);
-  
-  // On mobile: only select if it's a tap (no movement)
-  // On desktop: always select
-  const isTouchDrag = dragState.isTouchDrag;
-  if (moved > DRAG_THRESHOLD_PX) {
-    // It was a drag, not a tap
-    if (!isTouchDrag) {
-      // Desktop drag - keep device selected
-      state.selectedDeviceId = dragState.deviceId;
-    }
-    // Touch drag - don't select to avoid ports editor popping up
-  } else {
-    // It was a small movement/tap - select the device
-    if (dev) {
-      dev.position.x = dragState.startX;
-      dev.position.y = dragState.startY;
-    }
+  const { origin, isTouchDrag, startX, startY } = dragState;
+  const moved = dev ? Math.hypot(dev.position.x - startX, dev.position.y - startY) : 0;
+
+  if (dev && moved <= DRAG_THRESHOLD_PX) {
+    // A tap, not a drag: put the device back where it was and select it
+    restoreDeviceOrigin(dev, origin);
     state.selectedDeviceId = dragState.deviceId;
+  } else if (dev) {
+    const rack = findRackAtPoint(getDeviceCenter(dev));
+    if (rack) {
+      const slot = geo.slotForDevice(rack, dev);
+      const err = checkRackFit(rack, dev, slot.rack_u, slot.rack_x);
+      if (err) {
+        showWarningMessage(err);
+        restoreDeviceOrigin(dev, origin);
+      } else {
+        dev.rack_id = rack.id;
+        dev.rack_u = slot.rack_u;
+        dev.rack_x = slot.rack_x;
+      }
+    }
+    // Desktop drag keeps the device selected; touch drag doesn't, to avoid popping up the ports editor
+    if (!isTouchDrag) state.selectedDeviceId = dragState.deviceId;
   }
-  
+
   state.selectedConnectionId = null;
+  state.selectedRackId = null;
+  state.dropRackId = null;
   dragState = null;
   canvas.classList.remove('moving');
+  renderRacks();
   renderDevices();
   renderCables();
   renderPortsEditor();
   updateRemoveCableButton();
+}
+
+function addRack(widthIn, heightU) {
+  const n = state.racks.length;
+  const rack = { id: genId(), label: '', width_in: widthIn, height_u: heightU, position: { x: 40 + n * 30, y: 40 + n * 30 } };
+  state.racks.push(rack);
+  state.selectedRackId = rack.id;
+  state.selectedDeviceId = null;
+  state.selectedConnectionId = null;
+  renderRacks();
+  renderDevices();
+  renderPortsEditor();
+  updateRemoveCableButton();
+}
+
+// Devices inside the deleted rack stay on the canvas where they were.
+function deleteSelectedRack() {
+  const rack = getRackById(state.selectedRackId);
+  if (!rack) return;
+  state.devices.forEach((d) => {
+    if (d.rack_id !== rack.id) return;
+    d.position = { ...getDevicePosition(d) };
+    d.rack_id = null;
+    d.rack_u = null;
+    d.rack_x = 0;
+  });
+  state.racks = state.racks.filter((r) => r.id !== rack.id);
+  state.selectedRackId = null;
+  renderRacks();
+  renderDevices();
+  renderCables();
 }
 
 function deleteSelectedDevice() {
@@ -477,9 +632,31 @@ function deleteSelectedConnection() {
   updateRemoveCableButton();
 }
 
+function deleteSelection() {
+  if (state.selectedConnectionId) deleteSelectedConnection();
+  else if (state.selectedRackId) deleteSelectedRack();
+  else deleteSelectedDevice();
+  renderPortsEditor();
+}
+
 function updateRemoveCableButton() {
   const btn = document.getElementById('btn-remove-cable');
   if (btn) btn.disabled = !state.selectedConnectionId;
+}
+
+function selectConnection(connectionId) {
+  state.selectedConnectionId = connectionId;
+  state.selectedDeviceId = null;
+  state.selectedRackId = null;
+  renderRacks();
+  renderDevices();
+  renderCables();
+  renderPortsEditor();
+  updateRemoveCableButton();
+}
+
+function deselectAll() {
+  selectConnection(null);
 }
 
 function onPointerMove(evt) {
@@ -487,6 +664,7 @@ function onPointerMove(evt) {
   const pt = svgPoint(evt);
   if (dragState.type === 'cable') updateRubberBand(pt);
   else if (dragState.type === 'move') updateDeviceMove(pt);
+  else if (dragState.type === 'move-rack') updateRackMove(pt);
 }
 
 function onPointerUp(evt) {
@@ -505,6 +683,8 @@ function onPointerUp(evt) {
     }
   } else if (dragState.type === 'move') {
     endDeviceMove();
+  } else if (dragState.type === 'move-rack') {
+    endRackMove();
   }
   document.removeEventListener('mousemove', onPointerMove);
   document.removeEventListener('mouseup', onPointerUp);
@@ -520,6 +700,8 @@ function setupCanvasListeners() {
     if (dragState && dragState.type === 'move') {
       const pt = svgPoint(evt);
       updateDeviceMove(pt);
+    } else if (dragState && dragState.type === 'move-rack') {
+      updateRackMove(svgPoint(evt));
     } else if (touchCableState && evt.touches.length > 0) {
       const pt = svgPoint(evt);
       const dev = getDeviceById(touchCableState.fromDeviceId);
@@ -537,6 +719,8 @@ function setupCanvasListeners() {
     
     if (dragState && dragState.type === 'move') {
       endDeviceMove();
+    } else if (dragState && dragState.type === 'move-rack') {
+      endRackMove();
     }
   }
   
@@ -546,21 +730,21 @@ function setupCanvasListeners() {
     const port = evt.target.closest('.device-port');
     const g = evt.target.closest('[data-device-id]');
     if (connectionId) {
-      state.selectedConnectionId = connectionId;
-      state.selectedDeviceId = null;
-      renderDevices();
-      renderCables();
-      renderPortsEditor();
-      updateRemoveCableButton();
+      selectConnection(connectionId);
       return;
     }
     if (!g) {
-      state.selectedDeviceId = null;
+      const rackG = evt.target.closest('[data-rack-id]');
+      if (!rackG) {
+        deselectAll();
+        return;
+      }
+      evt.preventDefault();
       state.selectedConnectionId = null;
-      renderDevices();
-      renderCables();
-      renderPortsEditor();
       updateRemoveCableButton();
+      startRackMove(rackG.dataset.rackId, svgPoint(evt));
+      document.addEventListener('mousemove', onPointerMove);
+      document.addEventListener('mouseup', onPointerUp);
       return;
     }
     evt.preventDefault();
@@ -598,12 +782,7 @@ function setupCanvasListeners() {
     
     // If touching a cable, select it and don't start move/cable
     if (connectionId) {
-      state.selectedConnectionId = connectionId;
-      state.selectedDeviceId = null;
-      renderDevices();
-      renderCables();
-      renderPortsEditor();
-      updateRemoveCableButton();
+      selectConnection(connectionId);
       return;
     }
     
@@ -662,15 +841,18 @@ function setupCanvasListeners() {
       return;
     }
     
-    // If background tap, deselect
-    if (!g && !touchCableState) {
-      state.selectedDeviceId = null;
-      state.selectedConnectionId = null;
-      renderDevices();
-      renderCables();
-      renderPortsEditor();
-      updateRemoveCableButton();
+    // If touching a rack frame (not a device), start a rack move; a tap selects it
+    const rackG = touchTarget?.closest('[data-rack-id]');
+    if (!g && rackG && !touchCableState) {
+      evt.preventDefault();
+      startRackMove(rackG.dataset.rackId, svgPoint(evt));
+      document.addEventListener('touchmove', onTouchMove, { passive: false });
+      document.addEventListener('touchend', onTouchEnd);
+      return;
     }
+
+    // If background tap, deselect
+    if (!g && !touchCableState) deselectAll();
   });
   
   // Handle cable connection completion on touch end
@@ -791,6 +973,9 @@ function renderPortsEditor() {
   }
   panel.classList.remove('hidden');
   panel.querySelector('.ports-editor-label').textContent = dev.label || dev.type;
+  document.getElementById('device-ports-sides').checked = getPortLayout(dev) === 'sides';
+  document.getElementById('device-width').value = String(dev.width_in || 19);
+  document.getElementById('device-height').value = dev.height_u || 1;
   const inp = panel.querySelector('#ports-inputs');
   const out = panel.querySelector('#ports-outputs');
   const fromTemplate = !!(dev.templateId || dev.template_id);
@@ -828,20 +1013,64 @@ function applyPortsFromEditor() {
   renderCables();
 }
 
+function applySizeFromEditor() {
+  const dev = state.selectedDeviceId ? getDeviceById(state.selectedDeviceId) : null;
+  if (!dev) return;
+  const widthIn = Number(document.getElementById('device-width').value);
+  const heightU = Math.max(1, Math.min(60, Math.floor(Number(document.getElementById('device-height').value)) || 1));
+  const resized = { ...dev, width_in: widthIn, height_u: heightU };
+  const rack = dev.rack_id ? getRackById(dev.rack_id) : null;
+  const err = rack ? checkRackFit(rack, resized, dev.rack_u, dev.rack_x || 0) : null;
+  if (err) showWarningMessage(err);
+  else {
+    dev.width_in = widthIn;
+    dev.height_u = heightU;
+  }
+  renderPortsEditor();
+  renderDevices();
+  renderCables();
+}
+
+document.getElementById('device-width').addEventListener('change', applySizeFromEditor);
+
+document.getElementById('device-ports-sides').addEventListener('change', (evt) => {
+  const dev = getDeviceById(state.selectedDeviceId);
+  if (!dev) return;
+  dev.port_layout = evt.target.checked ? 'sides' : 'top_bottom';
+  renderDevices();
+  renderCables();
+});
+
+// The canvas-wide toggle applies to every device, clearing any per-device overrides
+function setCanvasPortLayout(layout) {
+  state.portLayout = layout;
+  state.devices.forEach((d) => { d.port_layout = null; });
+  document.getElementById('toggle-ports-sides').checked = layout === 'sides';
+  renderDevices();
+  renderCables();
+  renderPortsEditor();
+}
+
+document.getElementById('toggle-ports-sides').addEventListener('change', (evt) => {
+  setCanvasPortLayout(evt.target.checked ? 'sides' : 'top_bottom');
+});
+document.getElementById('device-height').addEventListener('change', applySizeFromEditor);
+
 document.addEventListener('keydown', (evt) => {
   if ((evt.key === 'Delete' || evt.key === 'Backspace') && !evt.target.matches('input, select, textarea')) {
     evt.preventDefault();
-    if (state.selectedConnectionId) {
-      deleteSelectedConnection();
-    } else {
-      deleteSelectedDevice();
-    }
+    deleteSelection();
   }
 });
 
 document.getElementById('btn-delete').addEventListener('click', () => {
-  deleteSelectedDevice();
-  renderPortsEditor();
+  deleteSelection();
+});
+
+document.getElementById('btn-add-rack').addEventListener('click', () => {
+  const widthIn = Number(document.getElementById('add-rack-width').value);
+  const heightU = Math.max(1, Math.min(60, Math.floor(Number(document.getElementById('add-rack-height').value)) || 1));
+  addRack(widthIn, heightU);
 });
 
 document.getElementById('btn-remove-cable').addEventListener('click', () => {
@@ -869,6 +1098,8 @@ document.getElementById('add-device-select').addEventListener('change', (evt) =>
       input_ports,
       output_ports,
       templateId,
+      width_in: template.width_in || 19,
+      height_u: template.height_u || 1,
     });
   } else {
     const defaults = DEFAULT_PORTS[type] || { input_ports: [], output_ports: [] };
@@ -881,6 +1112,8 @@ document.getElementById('add-device-select').addEventListener('change', (evt) =>
       position: { x: 80 + state.devices.length * 20, y: 80 + state.devices.length * 20 },
       input_ports: [...inp],
       output_ports: [...out],
+      width_in: 19,
+      height_u: 1,
     });
   }
   renderDevices();
@@ -897,10 +1130,24 @@ function setStateFromLayout(layout) {
     output_ports: d.output_ports || [],
   }));
   state.connections = layout.connections || [];
+  state.portLayout = layout.port_layout || DEFAULT_PORT_LAYOUT;
+  document.getElementById('toggle-ports-sides').checked = state.portLayout === 'sides';
+  state.racks = (layout.racks || []).map((r) => ({ ...r, position: r.position || { x: 0, y: 0 } }));
+  state.devices.forEach((d) => {
+    d.width_in = d.width_in || 19;
+    d.height_u = d.height_u || 1;
+    if (!d.rack_id || !getRackById(d.rack_id)) {
+      d.rack_id = null;
+      d.rack_u = null;
+    }
+    d.rack_x = d.rack_x || 0;
+  });
   state.selectedDeviceId = null;
   state.selectedConnectionId = null;
+  state.selectedRackId = null;
   const nameEl = document.getElementById('layout-name');
   if (nameEl) nameEl.value = state.name;
+  renderRacks();
   renderDevices();
   renderCables();
   renderPortsEditor();
@@ -913,12 +1160,17 @@ function newLayout() {
   state.name = 'Untitled layout';
   state.devices = [];
   state.connections = [];
+  state.racks = [];
+  state.portLayout = DEFAULT_PORT_LAYOUT;
+  document.getElementById('toggle-ports-sides').checked = DEFAULT_PORT_LAYOUT === 'sides';
   state.selectedDeviceId = null;
   state.selectedConnectionId = null;
+  state.selectedRackId = null;
   const nameEl = document.getElementById('layout-name');
   if (nameEl) nameEl.value = state.name;
   const loadEl = document.getElementById('load-layout-select');
   if (loadEl) loadEl.selectedIndex = 0;
+  renderRacks();
   renderDevices();
   renderCables();
   renderPortsEditor();
@@ -939,7 +1191,7 @@ async function refreshLoadLayoutOptions() {
     place.value = '';
     place.textContent = '— Select to load —';
     sel.appendChild(place);
-    layouts.forEach((l) => {
+    layouts.filter((l) => (l.mode || 'rack') === MODE).forEach((l) => {
       const opt = document.createElement('option');
       opt.value = l.id;
       opt.textContent = l.name || l.id;
@@ -982,7 +1234,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
   syncStorageModeFromUI();
   state.name = document.getElementById('layout-name').value.trim() || state.name;
   const devices = state.devices.map((d) => ({ ...d, template_id: d.template_id ?? d.templateId ?? null }));
-  const body = { id: state.layoutId, name: state.name, devices, connections: state.connections };
+  const body = { id: state.layoutId, name: state.name, devices, connections: state.connections, racks: state.racks, port_layout: state.portLayout, mode: MODE };
   try {
     const adapter = state.storageMode === 'local' ? storage.local : storage.server;
     const layout = await adapter.saveLayout(body);
@@ -1044,9 +1296,11 @@ function updateDeleteLayoutButton() {
 
 hideRubberBand();
 setupCanvasListeners();
+renderRacks();
 renderDevices();
 renderCables();
 renderPortsEditor();
+document.getElementById('toggle-ports-sides').checked = state.portLayout === 'sides';
 loadPortTypes().then(() => {
   renderDevices();
   renderCables();

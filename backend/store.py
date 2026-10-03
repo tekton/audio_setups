@@ -4,7 +4,7 @@ import os
 import uuid
 
 from .database import LayoutRow, session_scope
-from .models import Connection, Device, Layout
+from .models import Connection, Device, Layout, Rack
 
 _layouts: dict[str, Layout] = {}
 _next_id = 1
@@ -17,18 +17,26 @@ def _new_id() -> str:
     return out
 
 
-def _layout_to_row(layout: Layout) -> LayoutRow:
-    data = {
+def _layout_data(layout: Layout) -> dict:
+    return {
         "devices": [d.model_dump() for d in layout.devices],
         "connections": [c.model_dump() for c in layout.connections],
+        "racks": [r.model_dump() for r in layout.racks],
+        "port_layout": layout.port_layout,
+        "mode": layout.mode,
     }
-    return LayoutRow(id=layout.id or "", name=layout.name, data=data)
+
+
+def _layout_to_row(layout: Layout) -> LayoutRow:
+    return LayoutRow(id=layout.id or "", name=layout.name, data=_layout_data(layout))
 
 
 def _row_to_layout(row: LayoutRow) -> Layout:
     devices = [Device(**d) for d in row.data.get("devices", [])]
     connections = [Connection(**c) for c in row.data.get("connections", [])]
-    return Layout(id=row.id, name=row.name, devices=devices, connections=connections)
+    racks = [Rack(**r) for r in row.data.get("racks", [])]
+    return Layout(id=row.id, name=row.name, devices=devices, connections=connections, racks=racks,
+                  port_layout=row.data.get("port_layout", "top_bottom"), mode=row.data.get("mode", "rack"))
 
 
 def _use_db() -> bool:
@@ -68,7 +76,7 @@ def save_layout(layout: Layout) -> Layout:
             _layouts[lid] = updated
             return updated
         row = session.query(LayoutRow).filter(LayoutRow.id == lid).first()
-        data = {"devices": [d.model_dump() for d in updated.devices], "connections": [c.model_dump() for c in updated.connections]}
+        data = _layout_data(updated)
         if row:
             row.name = updated.name
             row.data = data

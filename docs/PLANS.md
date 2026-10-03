@@ -11,3 +11,5 @@ Out-of-scope and future ideas. Update as the product evolves.
 ## Roadmap / ideas
 
 - (Optional: list future features, e.g. “Layout list / picker in UI”, “Export as image”, “Port labels per device”.)
+- "Convert to rack" button on the classic view: place a classic layout's devices into new racks, carrying connections over.
+- Racks: rack rename/resize in UI; port labels on devices (currently tooltips only).
