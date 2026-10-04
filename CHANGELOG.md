@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Security
+- Fixed attribute injection (stored XSS) on the Port types and Device types pages: rows are now built with DOM APIs, and imported device and port types are validated before they are stored. A hostile id, name or color from a shared file can no longer run script.
+- Share links are size-limited (token length and inflated size), so a tiny crafted link can't hang the page.
+- The parts-list CSV neutralises spreadsheet formulas (cells starting with `=`, `+`, `-`, `@`).
+- Every page has a Content-Security-Policy (no inline script or style, no third-party hosts); the local-only build also drops the backend host.
+- Backend and database ports in `docker-compose.yml` are bound to 127.0.0.1, and CORS no longer sends `allow_credentials`.
+
+### Changed
+- Dependencies: jest 30 and jest-environment-jsdom 30.5 (`npm audit` now reports 0 vulnerabilities). CI uses Node 22 and current action versions, runs `npm audit --omit=dev` and `pip-audit`, and Dependabot is configured for npm, pip, GitHub Actions and Docker.
+- Added `SECURITY.md`.
+
 ## 0.3.0 - 2026-10-04
 
 ### Added

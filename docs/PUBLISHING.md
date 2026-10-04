@@ -40,3 +40,9 @@ Things to tell testers:
 - Layouts are stored per browser and per device. Chrome and Safari, or a phone and a tablet, don't share them. Use **Save & load > Export** to download a JSON file and **Import** on the other device.
 - iOS can clear a site's storage after a while without visits, and private tabs lose it when closed. Export layouts that matter.
 - If the browser blocks storage entirely, the app still runs but Save reports "Save failed".
+
+## Security of the published build
+
+- Every page carries a Content-Security-Policy meta tag (`script-src 'self'`, `style-src 'self'`, `object-src 'none'`, no third-party hosts). The local-only build also removes the backend host (`http://localhost:7001`) from `connect-src`, so pages can only talk to themselves.
+- So the policy keeps working: no inline `<script>`, `<style>` or `style="..."` in the HTML, and no `innerHTML` with data in it. Build elements with `createElement` and `textContent`, and set styles from JS through `element.style` (allowed) or a CSS class. `e2e/csp.spec.js` fails on any violation.
+- Imported files, share links and library packs are untrusted. Types are validated in `frontend/js/library-core.js` before they are stored, share links are size-limited in `frontend/js/share.js`, and the CSV export neutralises spreadsheet formulas in `frontend/js/parts.js`.

@@ -18,8 +18,8 @@ def startup():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["*"],  # local development only; the API has no authentication
+    allow_credentials=False,  # nothing here uses cookies, and "*" with credentials is not allowed by browsers anyway
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -8,7 +8,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "7432:5432"
+      - "127.0.0.1:7432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U layout -d audio_gear_layout"]
       interval: 5s
@@ -28,7 +28,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "7001:8000"
+      - "127.0.0.1:7001:8000"
 
   frontend:
     build:
@@ -38,7 +38,7 @@ services:
       # Live code: edits on host are served immediately by nginx (refresh browser to see changes)
       - ./frontend:/usr/share/nginx/html
     ports:
-      - "7002:80"
+      - "127.0.0.1:7002:80"
     depends_on:
       - backend
 
