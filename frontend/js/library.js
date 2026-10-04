@@ -5,7 +5,7 @@
  */
 import {
   mergeById, normalizeDeviceTypes, copyLayout, pageForLayout, importLayouts, installState, removeById,
-  buildBackup, parseImportFile, storageSummary, formatChars, backupNudge,
+  buildBackup, parseImportFile, validateDeviceTypes, validatePortTypes, storageSummary, formatChars, backupNudge,
 } from './library-core.js';
 
 const LAYOUTS_KEY = 'audio_gear_layouts';
@@ -241,8 +241,8 @@ async function init() {
   try {
     const manifest = await fetchJson('library/index.json');
     (manifest.layouts || []).forEach((e) => addRow('library-layouts', { title: e.name, description: ` — ${e.description}`, buttons: [{ label: 'Open a copy', onClick: () => openLayout(e) }] }));
-    (manifest.device_types || []).forEach((e) => packRow('library-device-types', e, { key: DEVICE_TYPES_KEY, addLabel: 'Add to my devices', load: normalizeDeviceTypes, noun: 'device type' }));
-    (manifest.port_types || []).forEach((e) => packRow('library-port-types', e, { key: PORT_TYPES_KEY, addLabel: 'Add to my ports', load: (d) => d, noun: 'port type' }));
+    (manifest.device_types || []).forEach((e) => packRow('library-device-types', e, { key: DEVICE_TYPES_KEY, addLabel: 'Add to my devices', load: (d) => normalizeDeviceTypes(validateDeviceTypes(d)), noun: 'device type' }));
+    (manifest.port_types || []).forEach((e) => packRow('library-port-types', e, { key: PORT_TYPES_KEY, addLabel: 'Add to my ports', load: validatePortTypes, noun: 'port type' }));
     say('');
   } catch (e) {
     say(`Could not load the library: ${e.message}`);

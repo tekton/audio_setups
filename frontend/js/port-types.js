@@ -45,12 +45,6 @@ async function loadMergedPortTypes() {
   return Array.from(byId.values());
 }
 
-function escapeHtml(s) {
-  const div = document.createElement("div");
-  div.textContent = s;
-  return div.innerHTML;
-}
-
 let editingId = null;
 
 function renderList(types) {
@@ -59,20 +53,35 @@ function renderList(types) {
   types.forEach((t) => {
     const li = document.createElement("li");
     const isDefault = t.id === DEFAULT_PORT_TYPE.id;
-    li.innerHTML = `
-      <span class="type-info">
-        <span class="port-type-swatch" style="background:${escapeHtml(t.color)}"></span>
-        <strong>${escapeHtml(t.name)}</strong> <code>${escapeHtml(t.type)}</code>
-        ${isDefault ? ' <em>(default)</em>' : ""}
-      </span>
-      <span class="type-actions">
-        ${isDefault ? "" : `<button type="button" data-edit="${escapeHtml(t.id)}">Edit</button><button type="button" data-delete="${escapeHtml(t.id)}">Delete</button>`}
-      </span>
-    `;
-    if (!isDefault) {
-      li.querySelector("[data-edit]").addEventListener("click", () => fillForm(t));
-      li.querySelector("[data-delete]").addEventListener("click", () => deletePortType(t.id));
+    const info = document.createElement("span");
+    info.className = "type-info";
+    const swatch = document.createElement("span");
+    swatch.className = "port-type-swatch";
+    if (/^#[0-9a-f]{3,8}$/i.test(t.color || "")) swatch.style.background = t.color; // anything else could pull in a url(...)
+    const strong = document.createElement("strong");
+    strong.textContent = t.name;
+    const code = document.createElement("code");
+    code.textContent = t.type;
+    info.append(swatch, strong, " ", code);
+    if (isDefault) {
+      const em = document.createElement("em");
+      em.textContent = "(default)";
+      info.append(" ", em);
     }
+    const actions = document.createElement("span");
+    actions.className = "type-actions";
+    if (!isDefault) {
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.textContent = "Edit";
+      edit.addEventListener("click", () => fillForm(t));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "Delete";
+      del.addEventListener("click", () => deletePortType(t.id));
+      actions.append(edit, del);
+    }
+    li.append(info, actions);
     ul.appendChild(li);
   });
 }

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { checkRackFit } from '../js/rack-geometry.js';
-import { mergeById, normalizeDeviceTypes, uniqueName, copyLayout, pageForLayout, parseLayoutsFile, importLayouts, baseName, installState, removeById, buildBackup, parseImportFile, storageSummary, formatChars, backupNudge } from '../js/library-core.js';
+import { mergeById, normalizeDeviceTypes, uniqueName, copyLayout, pageForLayout, parseLayoutsFile, importLayouts, validateDeviceTypes, validatePortTypes, baseName, installState, removeById, buildBackup, parseImportFile, storageSummary, formatChars, backupNudge } from '../js/library-core.js';
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (file) => JSON.parse(fs.readFileSync(path.join(frontend, file), 'utf8'));
@@ -166,12 +166,12 @@ describe('library helpers', () => {
   });
 
   test('a full backup round-trips through parseImportFile', () => {
-    const backup = buildBackup([{ name: 'L', devices: [] }], [{ id: 'd1' }], [{ id: 'p1' }], new Date('2026-10-04T00:00:00Z'));
+    const backup = buildBackup([{ name: 'L', devices: [] }], [{ id: 'd1' }], [{ id: 'p1', type: 'p', color: '#fff' }], new Date('2026-10-04T00:00:00Z'));
     expect(backup.exported_at).toBe('2026-10-04T00:00:00.000Z');
     const parsed = parseImportFile(JSON.stringify(backup));
     expect(parsed.layouts).toHaveLength(1);
     expect(parsed.deviceTypes).toEqual([{ id: 'd1' }]);
-    expect(parsed.portTypes).toEqual([{ id: 'p1' }]);
+    expect(parsed.portTypes).toEqual([{ id: 'p1', type: 'p', color: '#fff' }]);
   });
 
   test('parseImportFile still reads a single layout or an array, with no types', () => {
@@ -202,5 +202,44 @@ describe('library helpers', () => {
     expect(backupNudge('garbage', 2, now)).toContain('2 saved layouts');
     expect(backupNudge('2026-09-30T00:00:00Z', 3, now)).toBe('');
     expect(backupNudge('2026-08-01T00:00:00Z', 3, now)).toContain('64 days ago');
+  });
+
+  test('every shipped pack and port-types file passes validation', () => {
+    manifest.device_types.forEach((e) => expect(() => validateDeviceTypes(readJson(e.file))).not.toThrow());
+    manifest.port_types.forEach((e) => expect(() => validatePortTypes(readJson(e.file))).not.toThrow());
+  });
+
+  test('validateDeviceTypes accepts a good type and rejects each kind of bad one', () => {
+    const good = { id: 'a', name: 'A', label: 'A', width_in: 6, height_u: 2, input_ports: [{ name: 'In', type: 'rca' }], output_ports: [] };
+    expect(validateDeviceTypes([good])).toEqual([good]);
+    const bad = (over) => () => validateDeviceTypes([{ ...good, ...over }]);
+    expect(bad({ id: '' })).toThrow('needs an id');
+    expect(bad({ id: 5 })).toThrow('needs an id');
+    expect(bad({ name: 7 })).toThrow('name must be text');
+    expect(bad({ width_in: 12 })).toThrow('width must be');
+    expect(bad({ height_u: 0 })).toThrow('height must be');
+    expect(bad({ height_u: 1.5 })).toThrow('height must be');
+    expect(bad({ input_ports: 'x' })).toThrow('ports must be a list');
+    expect(bad({ input_ports: [{ name: 'In' }] })).toThrow('each port needs');
+    expect(bad({ output_ports: new Array(201).fill({ name: 'o', type: 't' }) })).toThrow('at most 200');
+    expect(() => validateDeviceTypes({})).toThrow('must be a list');
+    expect(() => validateDeviceTypes([null])).toThrow('needs an id');
+  });
+
+  test('validatePortTypes needs an id and a type, and only accepts hex colors', () => {
+    const good = { id: 'p', name: 'P', type: 'p', color: '#6b9b6b' };
+    expect(validatePortTypes([good, { id: 'q', type: 'q' }])).toHaveLength(2);
+    const bad = (over) => () => validatePortTypes([{ ...good, ...over }]);
+    expect(bad({ id: undefined })).toThrow('needs an id and a type');
+    expect(bad({ type: '' })).toThrow('needs an id and a type');
+    expect(bad({ color: 'red' })).toThrow('#rrggbb');
+    expect(bad({ color: 'url(https://evil.example/x)' })).toThrow('#rrggbb');
+    expect(bad({ color: '#12345g' })).toThrow('#rrggbb');
+  });
+
+  test('hostile ids are rejected before they can be stored', () => {
+    const attack = '"><img src=x onerror=alert(1)>';
+    expect(() => parseImportFile(JSON.stringify({ app: 'audio_gear_layout', layouts: [], device_types: [{ id: attack, width_in: 5 }] }))).toThrow('not a backup file');
+    expect(() => parseImportFile(JSON.stringify({ app: 'audio_gear_layout', layouts: [], port_types: [{ id: 'x', type: 'y', color: 'red;background:url(//evil)' }] }))).toThrow('not a backup file');
   });
 });

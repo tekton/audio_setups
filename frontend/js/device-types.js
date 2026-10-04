@@ -82,7 +82,12 @@ function renderPortRows(containerId, ports, onUpdate, portTypes = []) {
     name.value = typeof p === 'string' ? p : (p.name || '');
     const typeSelect = document.createElement('select');
     typeSelect.className = 'port-type-select';
-    typeSelect.innerHTML = types.map((pt) => `<option value="${escapeHtml(pt.type)}">${escapeHtml(pt.name)} (${escapeHtml(pt.type)})</option>`).join('');
+    types.forEach((pt) => {
+      const opt = document.createElement('option');
+      opt.value = pt.type;
+      opt.textContent = `${pt.name} (${pt.type})`;
+      typeSelect.append(opt);
+    });
     const portType = typeof p === 'string' ? 'audio' : (p.type || 'audio');
     const match = types.find((pt) => pt.type === portType);
     typeSelect.value = match ? match.type : (types[0]?.type || 'audio');
@@ -125,23 +130,27 @@ function renderTypeList(types) {
     const li = document.createElement('li');
     const inp = (t.input_ports || []).length;
     const out = (t.output_ports || []).length;
-    li.innerHTML = `
-      <span class="type-info"><strong>${escapeHtml(t.label || t.name || t.id)}</strong> <code>${escapeHtml(t.name || t.id)}</code> — ${inp} in, ${out} out</span>
-      <span class="type-actions">
-        <button type="button" data-edit="${escapeHtml(t.id)}">Edit</button>
-        <button type="button" data-delete="${escapeHtml(t.id)}">Delete</button>
-      </span>
-    `;
-    li.querySelector('[data-edit]').addEventListener('click', () => fillForm(t));
-    li.querySelector('[data-delete]').addEventListener('click', () => deleteType(t.id));
+    const info = document.createElement('span');
+    info.className = 'type-info';
+    const strong = document.createElement('strong');
+    strong.textContent = t.label || t.name || t.id;
+    const code = document.createElement('code');
+    code.textContent = t.name || t.id;
+    info.append(strong, ' ', code, ` — ${inp} in, ${out} out`);
+    const actions = document.createElement('span');
+    actions.className = 'type-actions';
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.textContent = 'Edit';
+    edit.addEventListener('click', () => fillForm(t));
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.textContent = 'Delete';
+    del.addEventListener('click', () => deleteType(t.id));
+    actions.append(edit, del);
+    li.append(info, actions);
     ul.appendChild(li);
   });
-}
-
-function escapeHtml(s) {
-  const div = document.createElement('div');
-  div.textContent = s;
-  return div.innerHTML;
 }
 
 function fillForm(t) {
