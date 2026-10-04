@@ -7,6 +7,7 @@ import * as geo from './rack-geometry.js';
 import { U_PX, RACK_PAD, RACK_HEADER } from './rack-geometry.js';
 import { uniqueName, baseName } from './library-core.js';
 import { canvasToPng, downloadBlob } from './image-export.js';
+import { encodeShare, decodeShare, shareUrl, tokenFromHash, LONG_LINK } from './share.js';
 
 // 'classic' is the freeform view: no racks, ports on the sides by default. Layouts are kept per mode.
 const MODE = document.body.dataset.mode === 'classic' ? 'classic' : 'rack';
@@ -1335,6 +1336,20 @@ document.getElementById('btn-export-layout').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
+document.getElementById('btn-share-link').addEventListener('click', async () => {
+  if (!state.devices.length && !state.racks.length) {
+    showWarningMessage('Nothing to share yet. Add a device or rack first.');
+    return;
+  }
+  const url = shareUrl(await encodeShare(currentLayoutBody()), window.location.href);
+  try {
+    await navigator.clipboard.writeText(url);
+    showWarningMessage(url.length > LONG_LINK ? 'Link copied, but it is very long; some apps may cut it off. Use Export to send a file instead.' : 'Link copied. Anyone who opens it gets their own copy.');
+  } catch {
+    window.prompt('Copy this link:', url);
+  }
+});
+
 document.getElementById('btn-export-image').addEventListener('click', async () => {
   if (!state.devices.length && !state.racks.length) {
     showWarningMessage('Nothing to export yet. Add a device or rack first.');
@@ -1446,4 +1461,21 @@ if (openId) {
       window.history.replaceState(null, '', window.location.pathname);
     })
     .catch(() => showWarningMessage('Could not open that layout from this browser.'));
+}
+
+// A share link (#share=...) opens the layout as an unsaved copy; one made on the other page is sent there
+const shareToken = tokenFromHash(window.location.hash);
+if (shareToken) {
+  decodeShare(shareToken)
+    .then((layout) => {
+      const mode = layout.mode === 'classic' ? 'classic' : 'rack';
+      if (mode !== MODE) {
+        window.location.replace(`${mode === 'classic' ? 'classic.html' : 'index.html'}${window.location.hash}`);
+        return;
+      }
+      setStateFromLayout({ ...layout, id: null });
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      showWarningMessage('Opened a shared layout. Press Save to keep it in this browser.');
+    })
+    .catch((e) => showWarningMessage(`Could not open the link: ${e.message}`));
 }

@@ -43,3 +43,7 @@ The Library page shows what this browser holds (layout, custom device-type and c
 ## System reset
 
 The Library page has a **System reset** button (with a confirmation box). It removes every custom device type and port type from this browser, back to the built-in defaults. Saved layouts are not touched.
+
+## Share links
+
+The in-app **Copy link** button puts the current layout in the link itself (`#share=...`, compressed where the browser supports it), so there is no file or server involved. Opening it loads an unsaved copy (Save keeps it) and sends it to the right page (rack or classic). Very long links (over about 6000 characters) get a warning, since some apps cut them off; use Export for those.
