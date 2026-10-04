@@ -29,6 +29,11 @@ Follow these when writing or reviewing code. Kept here so [AGENTS.md](../AGENTS.
 - **Accessible**: Use semantic HTML, keyboard navigation where relevant, and sufficient contrast; avoid relying only on color.
 - **Performance**: Keep the main thread responsive; avoid blocking on large layout recalculations or heavy I/O.
 
+## Security
+
+- **Untrusted input**: files a user imports, share links and library packs can come from anyone. Validate before storing; render with `textContent`, never `innerHTML` with data; no inline scripts or styles (each page has a Content-Security-Policy).
+- **No secrets in the repo**: nothing sensitive goes in layouts, tests or docs. See [SECURITY.md](../SECURITY.md).
+
 ## Testing and reliability
 
 - **Critical paths**: Add tests for core logic (e.g., layout math, connection rules, import/export).

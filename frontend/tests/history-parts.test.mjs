@@ -115,4 +115,18 @@ describe('partsList', () => {
     expect(csv).toContain('"Amp, ""big""","19"" × 1U","x"');
     expect(csv.split('\n')[0]).toBe('Devices');
   });
+
+  test('partsCsv keeps spreadsheet formulas from running (leading = + - @ tab or return)', () => {
+    const cells = ['=HYPERLINK("http://evil","x")', '+1+1', '-2+3', '@SUM(A1)', '\tcmd', '\rcmd'];
+    const csv = partsCsv({ devices: cells.map((name) => ({ name, size: '1', where: 'w' })), cables: [] });
+    const rows = csv.split('\n').slice(2, 2 + 6 + 2); // some cells contain a newline (the \r), so just check the text
+    cells.forEach((c) => expect(csv).toContain(`"'${c.replace(/"/g, '""')}"`));
+    expect(rows.length).toBeGreaterThan(0);
+    expect(csv).not.toMatch(/(^|\n)"[=+\-@]/);
+  });
+
+  test('partsCsv leaves ordinary text, digits and inner symbols alone', () => {
+    const csv = partsCsv({ devices: [{ name: 'DAC = good', size: '19" × 1U', where: 'Rack, U1-U2' }], cables: [] });
+    expect(csv).toContain('"DAC = good","19"" × 1U","Rack, U1-U2"');
+  });
 });

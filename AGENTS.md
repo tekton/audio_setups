@@ -27,4 +27,5 @@ Ask for approval before every `git push` (and before opening or merging a PR or 
 - E2E: `npm run test:e2e` (Playwright, `e2e/`; desktop plus iPhone/iPad WebKit emulation); see [docs/E2E_TESTS.md](docs/E2E_TESTS.md).
 - Publishing: `npm run build:local` builds a backend-free, local-storage-only site into `dist/`; see [docs/PUBLISHING.md](docs/PUBLISHING.md). Route backend calls through `apiFetch` and mark server-only UI `.server-only`.
 - Library: `library.html` imports example layouts, device packs and port types from `frontend/library/index.json`; see [docs/LIBRARY.md](docs/LIBRARY.md). `npm test` validates every listed file.
+- Security: pages have a Content-Security-Policy, so no inline scripts or styles and no `innerHTML` with data (build DOM with `textContent`); validate anything imported or shared before storing it. See [SECURITY.md](SECURITY.md); `e2e/csp.spec.js` and `e2e/security.spec.js` enforce it.
 - CI: `.github/workflows/test.yml` runs all of these on every push and pull request.

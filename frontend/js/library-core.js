@@ -93,12 +93,15 @@ export function parseImportFile(text) {
   }
   if (data && !Array.isArray(data) && data.app === 'audio_gear_layout' && Array.isArray(data.layouts)) {
     const layouts = data.layouts.length ? parseLayoutsFile(JSON.stringify(data.layouts)) : [];
-    const types = (v) => {
+    const check = (fn, v) => {
       if (v === undefined) return [];
-      if (!Array.isArray(v) || !v.every((t) => t && typeof t === 'object' && t.id)) throw new Error('not a backup file');
-      return v;
+      try {
+        return fn(v);
+      } catch (e) {
+        throw new Error(`not a backup file (${e.message})`);
+      }
     };
-    return { layouts, deviceTypes: types(data.device_types), portTypes: types(data.port_types) };
+    return { layouts, deviceTypes: check(validateDeviceTypes, data.device_types), portTypes: check(validatePortTypes, data.port_types) };
   }
   return { layouts: parseLayoutsFile(text), deviceTypes: [], portTypes: [] };
 }
@@ -124,4 +127,42 @@ export function backupNudge(lastBackupIso, layoutCount, now = new Date()) {
   if (Number.isNaN(last)) return `You have ${layoutCount} saved layout${layoutCount === 1 ? '' : 's'} that exist only in this browser and have never been backed up. Use Full backup to keep a copy.`;
   const days = Math.floor((now.getTime() - last) / 86400000);
   return days >= NUDGE_AFTER_DAYS ? `Your last backup was ${days} days ago. Use Full backup to refresh it.` : '';
+}
+
+// Imported types are stored and shown on other pages, so check their shape before accepting them.
+// Both return the list unchanged, or throw an Error saying which entry is wrong.
+const isText = (v, max) => typeof v === 'string' && v.length > 0 && v.length <= max;
+const COLOR = /^#[0-9a-f]{3,8}$/i;
+
+function validatePorts(ports, where) {
+  if (ports === undefined) return;
+  if (!Array.isArray(ports) || ports.length > 200) throw new Error(`${where}: ports must be a list of at most 200`);
+  ports.forEach((p) => {
+    if (!p || typeof p !== 'object' || !isText(p.name, 100) || !isText(p.type, 64)) throw new Error(`${where}: each port needs a name and a type`);
+  });
+}
+
+export function validateDeviceTypes(list) {
+  if (!Array.isArray(list)) throw new Error('device types must be a list');
+  list.forEach((t, i) => {
+    const where = `device type ${i + 1}`;
+    if (!t || typeof t !== 'object' || !isText(t.id, 100)) throw new Error(`${where}: needs an id`);
+    ['name', 'label'].forEach((k) => { if (t[k] !== undefined && !isText(t[k], 200)) throw new Error(`${where}: ${k} must be text`); });
+    if (t.width_in !== undefined && ![6, 10, 19].includes(t.width_in)) throw new Error(`${where}: width must be 6, 10 or 19`);
+    if (t.height_u !== undefined && !(Number.isInteger(t.height_u) && t.height_u >= 1 && t.height_u <= 60)) throw new Error(`${where}: height must be 1 to 60 U`);
+    validatePorts(t.input_ports, where);
+    validatePorts(t.output_ports, where);
+  });
+  return list;
+}
+
+export function validatePortTypes(list) {
+  if (!Array.isArray(list)) throw new Error('port types must be a list');
+  list.forEach((t, i) => {
+    const where = `port type ${i + 1}`;
+    if (!t || typeof t !== 'object' || !isText(t.id, 100) || !isText(t.type, 64)) throw new Error(`${where}: needs an id and a type`);
+    if (t.name !== undefined && !isText(t.name, 200)) throw new Error(`${where}: name must be text`);
+    if (t.color !== undefined && !COLOR.test(t.color)) throw new Error(`${where}: color must look like #rrggbb`);
+  });
+  return list;
 }

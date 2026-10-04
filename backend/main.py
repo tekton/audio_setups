@@ -9,7 +9,7 @@ from .device_type_store import delete_device_type, get_device_type, list_device_
 from .port_type_store import delete_port_type, get_port_type, list_port_types, save_port_type
 from .store import delete_layout, get_layout, list_layouts, save_layout
 
-app = FastAPI(title="Audio gear layout API", version="0.3.0")
+app = FastAPI(title="Audio gear layout API", version="0.3.1")
 
 
 @app.on_event("startup")
@@ -18,8 +18,8 @@ def startup():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["*"],  # local development only; the API has no authentication
+    allow_credentials=False,  # nothing here uses cookies, and "*" with credentials is not allowed by browsers anyway
     allow_methods=["*"],
     allow_headers=["*"],
 )

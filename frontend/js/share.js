@@ -26,6 +26,32 @@ async function pipe(bytes, stream) {
   return new Uint8Array(await new Response(out).arrayBuffer());
 }
 
+// Links come from other people, so bound the work: a tiny compressed token can inflate to gigabytes.
+export const MAX_TOKEN = 100000; // characters in the link's token
+export const MAX_LAYOUT_BYTES = 5 * 1000 * 1000; // inflated size
+
+class TooLarge extends Error {}
+
+async function inflateLimited(bytes, max) {
+  const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > max) {
+      await reader.cancel();
+      throw new TooLarge();
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  chunks.forEach((c) => { out.set(c, at); at += c.length; });
+  return out;
+}
+
 export async function encodeShare(layout) {
   const bytes = new TextEncoder().encode(JSON.stringify(slimLayout(layout)));
   if (typeof CompressionStream === 'undefined') return `j${bytesToB64Url(bytes)}`;
@@ -34,16 +60,18 @@ export async function encodeShare(layout) {
 
 // Throws if the token is damaged or isn't a layout (an object with a devices array).
 export async function decodeShare(token) {
+  if (token.length > MAX_TOKEN) throw new Error('this link is too large to open');
   try {
     const kind = token[0];
     let bytes = b64UrlToBytes(token.slice(1));
-    if (kind === 'z') bytes = await pipe(bytes, new DecompressionStream('deflate-raw'));
+    if (kind === 'z') bytes = await inflateLimited(bytes, MAX_LAYOUT_BYTES);
     else if (kind !== 'j') throw new Error('unknown format');
+    if (bytes.length > MAX_LAYOUT_BYTES) throw new TooLarge();
     const layout = JSON.parse(new TextDecoder().decode(bytes));
     if (!layout || typeof layout !== 'object' || !Array.isArray(layout.devices)) throw new Error('not a layout');
     return layout;
-  } catch {
-    throw new Error('this link is damaged or not a layout link');
+  } catch (e) {
+    throw new Error(e instanceof TooLarge ? 'this link is too large to open' : 'this link is damaged or not a layout link');
   }
 }
 

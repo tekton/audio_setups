@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' http://localhost:7001; object-src 'none'; base-uri 'none'; form-action 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Port types — Audio gear layout</title>
   <link rel="stylesheet" href="css/style.css" />
@@ -39,7 +40,7 @@
         <div class="field">
           <label for="port-type-color">Color (hex)</label>
           <input type="text" id="port-type-color" placeholder="#6b9b6b" />
-          <input type="color" id="port-type-color-picker" value="#6b9b6b" style="margin-left: 0.5rem; vertical-align: middle; height: 2rem; padding: 0; border: none; cursor: pointer;" />
+          <input type="color" id="port-type-color-picker" value="#6b9b6b" class="color-picker" />
         </div>
         <div class="form-actions">
           <button type="submit" id="btn-save-local">Save locally</button>

@@ -14,7 +14,7 @@ docker compose up --build
 
 - **Frontend**: http://localhost:7002  
 - **Backend API**: http://localhost:7001  
-- **Postgres**: localhost:7432 (user `layout`, password `layout`, db `audio_gear_layout`)
+- **Postgres**: localhost:7432 (user `layout`, password `layout`, db `audio_gear_layout`; local development values, bound to 127.0.0.1 only)
 
 Layouts are stored in Postgres (user/account tables can be added later). The backend uses the same API; no code changes needed.
 
@@ -24,10 +24,12 @@ From the project root (so `backend` is a package):
 
 ```bash
 pip install -r backend/requirements.txt
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 API: `GET/POST /layouts`, `GET/PUT/DELETE /layouts/{id}`.
+
+> The backend is for local development: it has no authentication, allows any origin (CORS `*`) and uses throwaway database credentials. Don't expose it to a network or the internet. The published site doesn't use it at all (see [docs/PUBLISHING.md](docs/PUBLISHING.md)). Security notes: [SECURITY.md](SECURITY.md).
 
 ### Frontend
 

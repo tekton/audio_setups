@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { bytesToB64Url, b64UrlToBytes, slimLayout, shareUrl, tokenFromHash, decodeShare } from '../js/share.js';
+import { bytesToB64Url, b64UrlToBytes, slimLayout, shareUrl, tokenFromHash, decodeShare, encodeShare, MAX_TOKEN, MAX_LAYOUT_BYTES } from '../js/share.js';
 
 describe('share links', () => {
   test('base64url round-trips every byte value and has no +, / or =', () => {
@@ -32,5 +32,24 @@ describe('share links', () => {
     for (const bad of ['', 'x123', 'j!!!', 'zAAAA', notLayout]) {
       await expect(decodeShare(bad)).rejects.toThrow('this link is damaged or not a layout link');
     }
+  });
+
+  test('a token over the length cap is refused before any decoding', async () => {
+    await expect(decodeShare(`z${'A'.repeat(MAX_TOKEN)}`)).rejects.toThrow('too large to open');
+  });
+
+  test('a small token that inflates past the size cap (a decompression bomb) is refused', async () => {
+    const zeros = new Uint8Array(MAX_LAYOUT_BYTES + 1000); // compresses to a few KB
+    const bomb = await new Response(new Blob([zeros]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer();
+    const token = `z${bytesToB64Url(new Uint8Array(bomb))}`;
+    expect(token.length).toBeLessThan(MAX_TOKEN);
+    await expect(decodeShare(token)).rejects.toThrow('too large to open');
+  });
+
+  test('a compressed layout round-trips, including non-ASCII text', async () => {
+    const layout = { name: 'Café ✓ 🎧', devices: [{ id: 'a' }], mode: 'rack' };
+    const token = await encodeShare({ id: 'local_1', ...layout });
+    expect(token[0]).toBe('z');
+    expect(await decodeShare(token)).toEqual(layout);
   });
 });

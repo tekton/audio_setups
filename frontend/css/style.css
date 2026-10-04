@@ -653,3 +653,12 @@ svg {
     border-bottom: 1px solid #999;
   }
 }
+
+.color-picker {
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}

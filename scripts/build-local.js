@@ -19,6 +19,15 @@ function buildLocal() {
   const config = fs.readFileSync(configPath, 'utf8');
   if (!config.includes('localOnly: false')) throw new Error('js/config.js no longer contains "localOnly: false"');
   fs.writeFileSync(configPath, config.replace('localOnly: false', 'localOnly: true'));
+
+  // No backend in this build, so pages may not talk to anything but themselves
+  const CSP_API = " http://localhost:7001";
+  fs.readdirSync(out).filter((f) => f.endsWith('.html')).forEach((f) => {
+    const file = path.join(out, f);
+    const html = fs.readFileSync(file, 'utf8');
+    if (html.includes('Content-Security-Policy') && !html.includes(`connect-src 'self'${CSP_API}`)) throw new Error(`${f}: unexpected connect-src in its Content-Security-Policy`);
+    fs.writeFileSync(file, html.replace(`connect-src 'self'${CSP_API}`, "connect-src 'self'"));
+  });
   return out;
 }
 
