@@ -89,6 +89,19 @@ async function addPortTypes(entry) {
   }
 }
 
+function systemReset() {
+  if (!window.confirm('Remove all custom device types and port types and go back to the built-in defaults?\n\nYour saved layouts are kept. This cannot be undone.')) return;
+  try {
+    localStorage.removeItem(DEVICE_TYPES_KEY);
+    localStorage.removeItem(PORT_TYPES_KEY);
+    say('System reset: custom device types and port types cleared. Your layouts are untouched.');
+  } catch {
+    say('Could not reset (storage is blocked in this browser).');
+  }
+}
+
+document.getElementById('library-reset').addEventListener('click', systemReset);
+
 async function init() {
   try {
     const manifest = await fetchJson('library/index.json');

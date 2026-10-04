@@ -28,3 +28,7 @@ Use stable ids for device types (`lib_...`): layouts reference them through `tem
 
 - Ports in a stacked rack are on the top and bottom edges, so cables between non-adjacent devices run straight through the devices in between. Ordering a rack so signal flows between neighbours (or using "Ports on sides") keeps them readable.
 - Layouts only come from the shipped library or a file the user imports; there's no user-to-user sharing beyond Export/Import.
+
+## System reset
+
+The Library page has a **System reset** button (with a confirmation box). It removes every custom device type and port type from this browser, back to the built-in defaults. Saved layouts are not touched.

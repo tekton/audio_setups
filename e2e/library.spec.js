@@ -54,3 +54,22 @@ test('adding the port types makes them available and colors the example\'s ports
   await page.locator('#library-port-types li').getByRole('button').click();
   await expect(page.locator('#library-status')).toContainText('port types');
 });
+
+test('system reset needs confirmation and clears types but keeps saved layouts', async ({ page }) => {
+  page.removeAllListeners('dialog');
+  await page.goto('/library.html');
+  await page.locator('#library-device-types li').first().getByRole('button').click();
+  await page.locator('#library-port-types li').first().getByRole('button').click();
+  await expect(page.locator('#library-status')).toContainText('Added');
+  await page.evaluate(() => localStorage.setItem('audio_gear_layouts', JSON.stringify([{ id: 'l1', name: 'Keep me', mode: 'rack', devices: [], connections: [] }])));
+  const keys = () => page.evaluate(() => ['audio_gear_device_types', 'audio_gear_port_types', 'audio_gear_layouts'].map((k) => localStorage.getItem(k) !== null));
+
+  page.once('dialog', (d) => d.dismiss());
+  await page.locator('#library-reset').click();
+  expect(await keys()).toEqual([true, true, true]);
+
+  page.once('dialog', (d) => d.accept());
+  await page.locator('#library-reset').click();
+  await expect(page.locator('#library-status')).toContainText('System reset');
+  expect(await keys()).toEqual([false, false, true]);
+});
