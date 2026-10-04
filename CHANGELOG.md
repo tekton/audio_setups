@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 - 2026-10-04
 
 ### Security
 - Fixed attribute injection (stored XSS) on the Port types and Device types pages: rows are now built with DOM APIs, and imported device and port types are validated before they are stored. A hostile id, name or color from a shared file can no longer run script.

@@ -1,6 +1,6 @@
 {
   "name": "audio-gear-layout",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Audio gear layout - plan and visualize a stereo/hi-fi chain",
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config frontend/tests/jest.config.js frontend/tests/",
