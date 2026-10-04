@@ -34,7 +34,9 @@ export function partsList(layout, portTypeName = (t) => t) {
 
 // CSV text of the same data, for pasting into a spreadsheet.
 export function partsCsv(parts) {
-  const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
+  // A cell starting with = + - @ (or a tab/return) is run as a formula by spreadsheets; a leading ' keeps it text.
+  const safe = (v) => (/^[=+\-@\t\r]/.test(String(v)) ? `'${v}` : String(v));
+  const esc = (v) => `"${safe(v).replace(/"/g, '""')}"`;
   const lines = ['Devices', 'Name,Size,Location', ...parts.devices.map((d) => [d.name, d.size, d.where].map(esc).join(',')),
     '', 'Cables', 'From,To,Type', ...parts.cables.map((c) => [c.from, c.to, c.type].map(esc).join(','))];
   return lines.join('\n');

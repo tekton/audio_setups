@@ -65,3 +65,25 @@ test('a hostile layout (names and labels full of markup) is drawn as text on the
   await expect(page.locator('#parts-body img, #parts-body b')).toHaveCount(0);
   expect(await pwned(page)).toBeUndefined();
 });
+
+test('a share link that inflates enormously is refused quickly instead of hanging the page', async ({ page }) => {
+  await page.goto('/index.html');
+  const token = await page.evaluate(async () => {
+    const zeros = new Uint8Array(30 * 1000 * 1000); // 30 MB of zeros compresses to a few KB
+    const buf = await new Response(new Blob([zeros]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer();
+    let bin = '';
+    new Uint8Array(buf).forEach((b) => { bin += String.fromCharCode(b); });
+    return `z${btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+  });
+  expect(token.length).toBeLessThan(100000);
+  await page.goto('about:blank');
+  await page.goto(`/index.html#share=${token}`);
+  await expect(page.locator('#canvas-message')).toContainText('too large to open');
+  await expect(page.locator('.device-block')).toHaveCount(0);
+});
+
+test('an absurdly long share link is refused', async ({ page }) => {
+  await page.goto('about:blank');
+  await page.goto(`/index.html#share=z${'A'.repeat(150000)}`);
+  await expect(page.locator('#canvas-message')).toContainText('too large to open');
+});
