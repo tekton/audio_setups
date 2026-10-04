@@ -5,6 +5,7 @@
 
 import * as geo from './rack-geometry.js';
 import { U_PX, RACK_PAD, RACK_HEADER } from './rack-geometry.js';
+import { uniqueName, baseName } from './library-core.js';
 
 // 'classic' is the freeform view: no racks, ports on the sides by default. Layouts are kept per mode.
 const MODE = document.body.dataset.mode === 'classic' ? 'classic' : 'rack';
@@ -1354,9 +1355,54 @@ document.getElementById('import-layout-file').addEventListener('change', async (
 });
 
 function updateDeleteLayoutButton() {
-  const btn = document.getElementById('btn-delete-layout');
-  if (btn) btn.disabled = !state.layoutId;
+  ['btn-delete-layout', 'btn-rename-layout'].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !state.layoutId;
+  });
 }
+
+function activeStorage() {
+  syncStorageModeFromUI();
+  return state.storageMode === 'local' ? storage.local : storage.server;
+}
+
+// Duplicate: save what is on the canvas as a new layout with a free name, and carry on editing the copy
+document.getElementById('btn-duplicate-layout').addEventListener('click', async () => {
+  try {
+    const adapter = activeStorage();
+    const taken = (await adapter.listLayouts()).map((l) => l.name);
+    const body = currentLayoutBody();
+    body.name = uniqueName(baseName(body.name), taken);
+    const saved = await adapter.saveLayout(body);
+    state.layoutId = saved.id;
+    state.name = saved.name;
+    document.getElementById('layout-name').value = state.name;
+    await refreshLoadLayoutOptions();
+    updateDeleteLayoutButton();
+    showWarningMessage(`Saved a copy as "${saved.name}".`);
+  } catch (e) {
+    alert('Duplicate failed: ' + e.message);
+  }
+});
+
+// Rename: change only the saved layout's name (other unsaved edits on the canvas are not saved)
+document.getElementById('btn-rename-layout').addEventListener('click', async () => {
+  if (!state.layoutId) return;
+  const wanted = document.getElementById('layout-name').value.trim();
+  if (!wanted) return;
+  try {
+    const adapter = activeStorage();
+    const taken = (await adapter.listLayouts()).filter((l) => l.id !== state.layoutId).map((l) => l.name);
+    const saved = await adapter.getLayout(state.layoutId);
+    const renamed = await adapter.saveLayout({ ...saved, name: uniqueName(wanted, taken) });
+    state.name = renamed.name;
+    document.getElementById('layout-name').value = state.name;
+    await refreshLoadLayoutOptions();
+    showWarningMessage(`Renamed to "${renamed.name}".`);
+  } catch (e) {
+    alert('Rename failed: ' + e.message);
+  }
+});
 
 hideRubberBand();
 setupCanvasListeners();

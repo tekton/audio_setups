@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { checkRackFit } from '../js/rack-geometry.js';
-import { mergeById, normalizeDeviceTypes, uniqueName, copyLayout, pageForLayout, parseLayoutsFile, importLayouts } from '../js/library-core.js';
+import { mergeById, normalizeDeviceTypes, uniqueName, copyLayout, pageForLayout, parseLayoutsFile, importLayouts, baseName } from '../js/library-core.js';
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (file) => JSON.parse(fs.readFileSync(path.join(frontend, file), 'utf8'));
@@ -113,5 +113,12 @@ describe('library helpers', () => {
     const out = importLayouts([{ id: 'x', name: 'Rack', devices: [] }, { id: 'y', name: 'Rack', devices: [] }], saved, () => `new_${++n}`);
     expect(out.map((l) => [l.id, l.name])).toEqual([['old', 'Rack'], ['new_1', 'Rack (2)'], ['new_2', 'Rack (3)']]);
     expect(saved).toHaveLength(1);
+  });
+
+  test('baseName drops a trailing copy number only', () => {
+    expect(baseName('Desk (2)')).toBe('Desk');
+    expect(baseName('Desk (12)')).toBe('Desk');
+    expect(baseName('Desk (mk2)')).toBe('Desk (mk2)');
+    expect(baseName('(3)')).toBe('(3)');
   });
 });

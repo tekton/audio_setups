@@ -23,6 +23,11 @@ export function uniqueName(name, taken) {
   return `${name} (${n})`;
 }
 
+// "Desk (2)" -> "Desk", so copying a copy numbers on from the original name instead of stacking suffixes.
+export function baseName(name) {
+  return name.replace(/ \(\d+\)$/, '') || name;
+}
+
 // A library layout becomes the user's own copy: fresh id, a name that doesn't clash with their saved layouts.
 export function copyLayout(layout, id, takenNames) {
   return { ...layout, id, name: uniqueName(layout.name || 'Untitled layout', takenNames) };
