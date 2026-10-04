@@ -1,0 +1,144 @@
+{
+  "id": null,
+  "name": "Two-channel listening rack",
+  "devices": [
+    {
+      "id": "l19_streamer",
+      "type": "Network streamer (19\")",
+      "label": "Network streamer (19\")",
+      "position": {
+        "x": 96,
+        "y": 64
+      },
+      "input_ports": [],
+      "output_ports": [
+        {
+          "name": "USB",
+          "type": "usb_audio"
+        },
+        {
+          "name": "Coax Out",
+          "type": "spdif_coax"
+        },
+        {
+          "name": "RCA Out",
+          "type": "rca"
+        }
+      ],
+      "template_id": "lib_network_streamer_19in",
+      "width_in": 19,
+      "height_u": 1,
+      "rack_id": "listen19",
+      "rack_u": 5,
+      "rack_x": 0
+    },
+    {
+      "id": "l19_pre",
+      "type": "Preamp (19\")",
+      "label": "Preamp (19\")",
+      "position": {
+        "x": 96,
+        "y": 120
+      },
+      "input_ports": [
+        {
+          "name": "RCA 1",
+          "type": "rca"
+        },
+        {
+          "name": "RCA 2",
+          "type": "rca"
+        },
+        {
+          "name": "Phono",
+          "type": "phono"
+        },
+        {
+          "name": "XLR In",
+          "type": "xlr_balanced"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "RCA Out",
+          "type": "rca"
+        },
+        {
+          "name": "XLR Out",
+          "type": "xlr_balanced"
+        }
+      ],
+      "template_id": "lib_preamp_19in",
+      "width_in": 19,
+      "height_u": 1,
+      "rack_id": "listen19",
+      "rack_u": 4,
+      "rack_x": 0
+    },
+    {
+      "id": "l19_amp",
+      "type": "Power amp (19\")",
+      "label": "Power amp (19\")",
+      "position": {
+        "x": 96,
+        "y": 176
+      },
+      "input_ports": [
+        {
+          "name": "XLR In",
+          "type": "xlr_balanced"
+        },
+        {
+          "name": "RCA In",
+          "type": "rca"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "Speakers",
+          "type": "speaker_binding"
+        }
+      ],
+      "template_id": "lib_power_amp_19in",
+      "width_in": 19,
+      "height_u": 3,
+      "rack_id": "listen19",
+      "rack_u": 1,
+      "rack_x": 0
+    }
+  ],
+  "connections": [
+    {
+      "id": "listen19_c1",
+      "from_device_id": "l19_streamer",
+      "to_device_id": "l19_pre",
+      "from_port": "RCA Out",
+      "to_port": "RCA 1",
+      "from_port_type": "rca",
+      "to_port_type": "rca"
+    },
+    {
+      "id": "listen19_c2",
+      "from_device_id": "l19_pre",
+      "to_device_id": "l19_amp",
+      "from_port": "RCA Out",
+      "to_port": "RCA In",
+      "from_port_type": "rca",
+      "to_port_type": "rca"
+    }
+  ],
+  "racks": [
+    {
+      "id": "listen19",
+      "label": "Two-channel",
+      "width_in": 19,
+      "height_u": 5,
+      "position": {
+        "x": 80,
+        "y": 40
+      }
+    }
+  ],
+  "port_layout": "top_bottom",
+  "mode": "rack"
+}

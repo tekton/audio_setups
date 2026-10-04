@@ -1,0 +1,116 @@
+[
+  {
+    "id": "lib_streamer_10in",
+    "name": "Streamer (10\")",
+    "label": "Streamer (10\")",
+    "width_in": 10,
+    "height_u": 1,
+    "input_ports": [],
+    "output_ports": [
+      {
+        "name": "USB",
+        "type": "usb_audio"
+      },
+      {
+        "name": "Coax Out",
+        "type": "spdif_coax"
+      }
+    ]
+  },
+  {
+    "id": "lib_dac_10in",
+    "name": "DAC (10\")",
+    "label": "DAC (10\")",
+    "width_in": 10,
+    "height_u": 1,
+    "input_ports": [
+      {
+        "name": "USB",
+        "type": "usb_audio"
+      },
+      {
+        "name": "Coax",
+        "type": "spdif_coax"
+      },
+      {
+        "name": "Optical",
+        "type": "toslink"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "RCA Out",
+        "type": "rca"
+      },
+      {
+        "name": "XLR Out",
+        "type": "xlr_balanced"
+      }
+    ]
+  },
+  {
+    "id": "lib_preamp_10in",
+    "name": "Preamp (10\")",
+    "label": "Preamp (10\")",
+    "width_in": 10,
+    "height_u": 1,
+    "input_ports": [
+      {
+        "name": "RCA 1",
+        "type": "rca"
+      },
+      {
+        "name": "RCA 2",
+        "type": "rca"
+      },
+      {
+        "name": "Phono",
+        "type": "phono"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "RCA Out",
+        "type": "rca"
+      }
+    ]
+  },
+  {
+    "id": "lib_power_amp_10in",
+    "name": "Power amp (10\")",
+    "label": "Power amp (10\")",
+    "width_in": 10,
+    "height_u": 2,
+    "input_ports": [
+      {
+        "name": "RCA In",
+        "type": "rca"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "Speakers",
+        "type": "speaker_binding"
+      }
+    ]
+  },
+  {
+    "id": "lib_headphone_amp_10in",
+    "name": "Headphone amp (10\")",
+    "label": "Headphone amp (10\")",
+    "width_in": 10,
+    "height_u": 1,
+    "input_ports": [
+      {
+        "name": "RCA In",
+        "type": "rca"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "Phones",
+        "type": "trs_quarter"
+      }
+    ]
+  }
+]

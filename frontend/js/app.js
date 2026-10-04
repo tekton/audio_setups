@@ -5,6 +5,11 @@
 
 import * as geo from './rack-geometry.js';
 import { U_PX, RACK_PAD, RACK_HEADER } from './rack-geometry.js';
+import { uniqueName, baseName } from './library-core.js';
+import { canvasToPng, downloadBlob } from './image-export.js';
+import { createHistory } from './history.js';
+import { partsList, partsCsv } from './parts.js';
+import { encodeShare, decodeShare, shareUrl, tokenFromHash, LONG_LINK } from './share.js';
 
 // 'classic' is the freeform view: no racks, ports on the sides by default. Layouts are kept per mode.
 const MODE = document.body.dataset.mode === 'classic' ? 'classic' : 'rack';
@@ -343,6 +348,8 @@ function renderCables() {
     defs.querySelectorAll('marker.cable-marker').forEach((m) => m.remove());
   }
   cablesLayer.innerHTML = '';
+  const deviceRects = state.devices.map((d) => ({ ...getDevicePosition(d), w: getDeviceSize(d).w, h: getDeviceSize(d).h }));
+  let rerouted = 0; // cables sent around devices so far; each gets its own lane
   state.connections.forEach((c) => {
     const endpoints = getConnectionEndpoints(c);
     if (!endpoints) return;
@@ -365,13 +372,12 @@ function renderCables() {
       marker.appendChild(poly);
       defs.appendChild(marker);
     }
-    const line = document.createElementNS(svgNs, 'line');
+    const route = geo.cableRoute(a, b, deviceRects, rerouted);
+    if (route.length > 2) rerouted += 1;
+    const line = document.createElementNS(svgNs, 'path');
     line.setAttribute('class', 'cable' + (c.id === state.selectedConnectionId ? ' selected' : ''));
     line.dataset.connectionId = c.id;
-    line.setAttribute('x1', a.x);
-    line.setAttribute('y1', a.y);
-    line.setAttribute('x2', b.x);
-    line.setAttribute('y2', b.y);
+    line.setAttribute('d', route.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' '));
     line.setAttribute('marker-end', 'url(#' + markerId + ')');
     line.style.stroke = color;
     cablesLayer.appendChild(line);
@@ -1145,6 +1151,8 @@ document.getElementById('add-device-select').addEventListener('change', (evt) =>
   evt.target.value = '';
 });
 
+let restoringHistory = false;
+
 function setStateFromLayout(layout) {
   state.layoutId = layout.id;
   state.name = layout.name || 'Untitled layout';
@@ -1177,6 +1185,7 @@ function setStateFromLayout(layout) {
   renderPortsEditor();
   updateRemoveCableButton();
   updateDeleteLayoutButton();
+  if (!restoringHistory) resetHistory();
 }
 
 function newLayout() {
@@ -1200,6 +1209,7 @@ function newLayout() {
   renderPortsEditor();
   updateRemoveCableButton();
   updateDeleteLayoutButton();
+  resetHistory();
 }
 
 async function refreshLoadLayoutOptions() {
@@ -1333,6 +1343,50 @@ document.getElementById('btn-export-layout').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
+document.getElementById('btn-share-link').addEventListener('click', async () => {
+  if (!state.devices.length && !state.racks.length) {
+    showWarningMessage('Nothing to share yet. Add a device or rack first.');
+    return;
+  }
+  const url = shareUrl(await encodeShare(currentLayoutBody()), window.location.href);
+  try {
+    await navigator.clipboard.writeText(url);
+    showWarningMessage(url.length > LONG_LINK ? 'Link copied, but it is very long; some apps may cut it off. Use Export to send a file instead.' : 'Link copied. Anyone who opens it gets their own copy.');
+  } catch {
+    window.prompt('Copy this link:', url);
+  }
+});
+
+// Classic page only: save a rack version of this layout as a new layout and open it on the rack page
+document.getElementById('btn-convert-rack')?.addEventListener('click', async () => {
+  if (!state.devices.length) {
+    showWarningMessage('Nothing to convert yet. Add some devices first.');
+    return;
+  }
+  try {
+    const rackLayout = geo.convertClassicToRack(currentLayoutBody());
+    const taken = (await storage.local.listLayouts()).map((l) => l.name);
+    rackLayout.name = uniqueName(`${baseName(state.name)} (rack)`, taken);
+    const saved = await storage.local.saveLayout(rackLayout);
+    window.location.href = `index.html?layout=${encodeURIComponent(saved.id)}`;
+  } catch (e) {
+    alert('Convert failed: ' + e.message);
+  }
+});
+
+document.getElementById('btn-export-image').addEventListener('click', async () => {
+  if (!state.devices.length && !state.racks.length) {
+    showWarningMessage('Nothing to export yet. Add a device or rack first.');
+    return;
+  }
+  try {
+    const name = (document.getElementById('layout-name').value.trim() || 'layout').replace(/[^\w.-]+/g, '_');
+    downloadBlob(await canvasToPng(canvas), `${name}.png`);
+  } catch (e) {
+    alert('Image export failed: ' + e.message);
+  }
+});
+
 document.getElementById('btn-import-layout').addEventListener('click', () => {
   document.getElementById('import-layout-file').click();
 });
@@ -1354,9 +1408,54 @@ document.getElementById('import-layout-file').addEventListener('change', async (
 });
 
 function updateDeleteLayoutButton() {
-  const btn = document.getElementById('btn-delete-layout');
-  if (btn) btn.disabled = !state.layoutId;
+  ['btn-delete-layout', 'btn-rename-layout'].forEach((id) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = !state.layoutId;
+  });
 }
+
+function activeStorage() {
+  syncStorageModeFromUI();
+  return state.storageMode === 'local' ? storage.local : storage.server;
+}
+
+// Duplicate: save what is on the canvas as a new layout with a free name, and carry on editing the copy
+document.getElementById('btn-duplicate-layout').addEventListener('click', async () => {
+  try {
+    const adapter = activeStorage();
+    const taken = (await adapter.listLayouts()).map((l) => l.name);
+    const body = currentLayoutBody();
+    body.name = uniqueName(baseName(body.name), taken);
+    const saved = await adapter.saveLayout(body);
+    state.layoutId = saved.id;
+    state.name = saved.name;
+    document.getElementById('layout-name').value = state.name;
+    await refreshLoadLayoutOptions();
+    updateDeleteLayoutButton();
+    showWarningMessage(`Saved a copy as "${saved.name}".`);
+  } catch (e) {
+    alert('Duplicate failed: ' + e.message);
+  }
+});
+
+// Rename: change only the saved layout's name (other unsaved edits on the canvas are not saved)
+document.getElementById('btn-rename-layout').addEventListener('click', async () => {
+  if (!state.layoutId) return;
+  const wanted = document.getElementById('layout-name').value.trim();
+  if (!wanted) return;
+  try {
+    const adapter = activeStorage();
+    const taken = (await adapter.listLayouts()).filter((l) => l.id !== state.layoutId).map((l) => l.name);
+    const saved = await adapter.getLayout(state.layoutId);
+    const renamed = await adapter.saveLayout({ ...saved, name: uniqueName(wanted, taken) });
+    state.name = renamed.name;
+    document.getElementById('layout-name').value = state.name;
+    await refreshLoadLayoutOptions();
+    showWarningMessage(`Renamed to "${renamed.name}".`);
+  } catch (e) {
+    alert('Rename failed: ' + e.message);
+  }
+});
 
 hideRubberBand();
 setupCanvasListeners();
@@ -1387,3 +1486,115 @@ if (openId) {
     })
     .catch(() => showWarningMessage('Could not open that layout from this browser.'));
 }
+
+// A share link (#share=...) opens the layout as an unsaved copy; one made on the other page is sent there
+const shareToken = tokenFromHash(window.location.hash);
+if (shareToken) {
+  decodeShare(shareToken)
+    .then((layout) => {
+      const mode = layout.mode === 'classic' ? 'classic' : 'rack';
+      if (mode !== MODE) {
+        window.location.replace(`${mode === 'classic' ? 'classic.html' : 'index.html'}${window.location.hash}`);
+        return;
+      }
+      setStateFromLayout({ ...layout, id: null });
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      showWarningMessage('Opened a shared layout. Press Save to keep it in this browser.');
+    })
+    .catch((e) => showWarningMessage(`Could not open the link: ${e.message}`));
+}
+
+// Undo/redo: after each finished edit (mouse/touch release, click, change) the layout is compared with the last
+// snapshot and pushed if different. Name, saved id and selection are not part of it.
+const undoHistory = createHistory(100);
+const trackedJson = () => JSON.stringify({ devices: state.devices, connections: state.connections, racks: state.racks, port_layout: state.portLayout });
+
+function updateUndoButtons() {
+  document.getElementById('btn-undo').disabled = !undoHistory.canUndo();
+  document.getElementById('btn-redo').disabled = !undoHistory.canRedo();
+}
+
+function resetHistory() {
+  undoHistory.reset(trackedJson());
+  updateUndoButtons();
+}
+
+function flushHistory() {
+  if (undoHistory.push(trackedJson())) updateUndoButtons();
+}
+
+// One check per event, after its handlers have run (not debounced, so quick edits stay separate undo steps)
+['mouseup', 'touchend', 'click', 'change'].forEach((type) => document.addEventListener(type, () => setTimeout(flushHistory, 0), true));
+
+function stepHistory(direction) {
+  flushHistory(); // an edit made a moment ago must be recorded before stepping back over it
+  const json = direction === 'undo' ? undoHistory.undo() : undoHistory.redo();
+  if (json === null) return;
+  const snap = JSON.parse(json);
+  restoringHistory = true;
+  setStateFromLayout({ id: state.layoutId, name: state.name, devices: snap.devices, connections: snap.connections, racks: snap.racks, port_layout: snap.port_layout });
+  restoringHistory = false;
+  undoHistory.replaceCurrent(trackedJson()); // loading normalises the layout; keep that form so it isn't mistaken for a new edit
+  updateUndoButtons();
+}
+
+document.getElementById('btn-undo').addEventListener('click', () => stepHistory('undo'));
+document.getElementById('btn-redo').addEventListener('click', () => stepHistory('redo'));
+document.addEventListener('keydown', (evt) => {
+  if (!(evt.ctrlKey || evt.metaKey) || evt.altKey) return;
+  const target = evt.target;
+  if (target.closest?.('input, select, textarea, [contenteditable]')) return; // leave text undo to the browser
+  const key = evt.key.toLowerCase();
+  if (key === 'z') { evt.preventDefault(); stepHistory(evt.shiftKey ? 'redo' : 'undo'); }
+  else if (key === 'y') { evt.preventDefault(); stepHistory('redo'); }
+});
+resetHistory();
+
+// Parts list: devices and cables as a table you can print or paste into a spreadsheet
+const partsPanel = document.getElementById('parts-panel');
+
+function portTypeLabel(slug) {
+  return portTypesList.find((t) => t.type === slug)?.name || slug;
+}
+
+function renderParts() {
+  const parts = partsList(currentLayoutBody(), portTypeLabel);
+  document.getElementById('parts-title').textContent = state.name;
+  const body = document.getElementById('parts-body');
+  body.replaceChildren();
+  const table = (title, head, rows) => {
+    const h = document.createElement('h3');
+    h.textContent = title;
+    const t = document.createElement('table');
+    const tr = t.createTHead().insertRow();
+    head.forEach((text) => { const th = document.createElement('th'); th.textContent = text; tr.append(th); });
+    const tbody = t.createTBody();
+    if (!rows.length) { const r = tbody.insertRow(); const td = r.insertCell(); td.colSpan = head.length; td.textContent = 'None yet'; }
+    rows.forEach((row) => { const r = tbody.insertRow(); row.forEach((v) => { r.insertCell().textContent = v; }); });
+    body.append(h, t);
+  };
+  if (parts.racks.length) table(`Racks (${parts.racks.length})`, ['Name', 'Size'], parts.racks.map((r) => [r.name, r.size]));
+  table(`Devices (${parts.devices.length})`, ['Name', 'Size', 'Location'], parts.devices.map((d) => [d.name, d.size, d.where]));
+  table(`Cables (${parts.cables.length})`, ['From', 'To', 'Type'], parts.cables.map((c) => [c.from, c.to, c.type]));
+  if (parts.cableTotals.length) table('Cables to buy, by type', ['Type', 'Count'], parts.cableTotals.map((c) => [c.type, String(c.count)]));
+  return parts;
+}
+
+function setPartsOpen(open) {
+  partsPanel.hidden = !open;
+  document.getElementById('btn-parts').setAttribute('aria-expanded', String(open));
+  if (open) { renderParts(); partsPanel.scrollIntoView?.({ block: 'nearest' }); }
+}
+
+document.getElementById('btn-parts').addEventListener('click', () => setPartsOpen(partsPanel.hidden));
+document.getElementById('btn-parts-close').addEventListener('click', () => setPartsOpen(false));
+document.getElementById('btn-parts-print').addEventListener('click', () => { renderParts(); window.print(); });
+document.getElementById('btn-parts-csv').addEventListener('click', async () => {
+  const csv = partsCsv(renderParts());
+  try {
+    await navigator.clipboard.writeText(csv);
+    showWarningMessage('Parts list copied. Paste it into a spreadsheet.');
+  } catch {
+    window.prompt('Copy the parts list:', csv);
+  }
+});

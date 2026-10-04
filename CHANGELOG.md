@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0 - 2026-10-04
+
+### Added
+- **Library data tools** (Library page):
+  - **System reset** clears custom device and port types back to the built-in defaults; saved layouts are kept. It asks for confirmation.
+  - **Full backup** saves layouts plus custom device and port types to one file; **Export all layouts** saves layouts only.
+  - **Import** reads a full backup, an Export all file or a single layout. Layouts are added as new copies, so nothing is overwritten; types are merged by id.
+  - **Clear all layouts** (with confirmation) deletes layouts and keeps types.
+  - Packs show **Installed** or **Partly installed**, with a **Remove** button that drops only that pack's types.
+  - A storage summary (counts and approximate size) and a backup reminder for layouts that have never been backed up, or whose last backup is 30+ days old.
+- **Library content**: Desktop 10" gear and Full-width 19" gear packs; Desktop 10" rack, Two-channel listening rack and Headphone desk (freeform) examples.
+- **Layout tools**:
+  - **Duplicate** and **Rename** saved layouts.
+  - **Export image** downloads a PNG of the canvas.
+  - **Copy link** puts a layout in the URL; opening it gives an unsaved copy on the right page.
+  - **Convert to rack** (Classic page) saves a rack version with devices stacked in signal-flow order and cables kept.
+  - **Undo / Redo** with buttons or Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl+Y.
+  - **Parts list** of racks, devices, cables and cables to buy by type, with Print and Copy as CSV.
+- Cables now route around devices in a stacked rack instead of crossing them.
+
+### Changed
+- `AGENTS.md` asks for approval before every push, PR or release.
+
+### Known limits
+- Share links over about 6000 characters show a warning, since some apps truncate long links.
+- Mobile support, PNG export and share links are verified with WebKit emulation, not on real devices.
+- Cables from side ports ("Ports on sides") stay straight lines.
+- Device categories are not built yet.
+
 ## 0.2.0 - 2026-10-04
 
 ### Added

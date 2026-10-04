@@ -13,6 +13,18 @@
       "name": "Compact 6\" gear",
       "description": "Mac mini mount (2U), DAC, headphone amp and phono stage, sized for a 6\" rack.",
       "file": "library/devices/compact-6in.json"
+    },
+    {
+      "id": "desktop-10in",
+      "name": "Desktop 10\" gear",
+      "description": "Streamer, DAC, preamp, 2U power amp and headphone amp, sized for a 10\" rack.",
+      "file": "library/devices/desktop-10in.json"
+    },
+    {
+      "id": "rack-19in",
+      "name": "Full-width 19\" gear",
+      "description": "CD transport, network streamer, preamp and a 3U power amp, sized for a 19\" rack.",
+      "file": "library/devices/rack-19in.json"
     }
   ],
   "layouts": [
@@ -27,6 +39,24 @@
       "name": "Home stereo rack",
       "description": "A full-width 19\" rack: turntable and phono pre-amp, a DAC and an EQ into a headphone amp.",
       "file": "library/layouts/home-stereo-19in.json"
+    },
+    {
+      "id": "desktop-10in",
+      "name": "Desktop 10\" rack",
+      "description": "A 10\" rack: streamer into a DAC, preamp and a 2U power amp. Add the Desktop 10\" gear pack to reuse the parts.",
+      "file": "library/layouts/desktop-10in.json"
+    },
+    {
+      "id": "two-channel-19in",
+      "name": "Two-channel listening rack",
+      "description": "A 19\" rack: network streamer into a preamp and a 3U power amp.",
+      "file": "library/layouts/two-channel-19in.json"
+    },
+    {
+      "id": "headphone-desk-classic",
+      "name": "Headphone desk (freeform)",
+      "description": "A freeform Classic-page layout: laptop into a DAC, headphone amp and headphones.",
+      "file": "library/layouts/headphone-desk-classic.json"
     }
   ]
 }

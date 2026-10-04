@@ -34,6 +34,26 @@
       <p class="hint">Connector types and their colors. Cables only connect matching types.</p>
       <ul id="library-port-types" class="type-list"></ul>
     </section>
+    <section class="section">
+      <h2>Your data</h2>
+      <p id="library-storage" class="hint"></p>
+      <p id="library-nudge" class="hint nudge" role="status" hidden></p>
+      <p class="hint">Everything lives in this browser only. Full backup saves your layouts and custom types to one file you can restore from, here or on another device.</p>
+      <button type="button" id="library-full-backup">Full backup</button>
+    </section>
+    <section class="section">
+      <h2>Your layouts</h2>
+      <p class="hint">Export all saves every layout in this browser to one JSON file. Import adds layouts from a file (one layout, an Export all file or a Full backup) as new copies; a Full backup also restores its device and port types. Clear all layouts deletes them (export first if you want a copy).</p>
+      <button type="button" id="library-export-layouts">Export all layouts</button>
+      <button type="button" id="library-import-layouts">Import…</button>
+      <input type="file" id="library-import-file" accept="application/json,.json" hidden />
+      <button type="button" id="library-clear-layouts">Clear all layouts…</button>
+    </section>
+    <section class="section">
+      <h2>System reset</h2>
+      <p class="hint">Clears every custom device type and port type you've added, back to the built-in defaults. Your saved layouts are not touched.</p>
+      <button type="button" id="library-reset">System reset…</button>
+    </section>
   </main>
 
   <script src="js/config.js"></script>

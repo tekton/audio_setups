@@ -45,6 +45,11 @@
           <button type="button" id="btn-add-rack">Add rack</button>
         </span>
         <span class="toolbar-group">
+          <button type="button" id="btn-undo" disabled title="Undo the last change (Ctrl/Cmd+Z)">Undo</button>
+          <button type="button" id="btn-redo" disabled title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
+          <button type="button" id="btn-parts" aria-expanded="false" aria-controls="parts-panel" title="Parts and cables list, printable">Parts list</button>
+        </span>
+        <span class="toolbar-group">
           <button type="button" id="btn-delete">Delete selected</button>
           <button type="button" id="btn-remove-cable" disabled>Sever Connection</button>
         </span>
@@ -67,6 +72,8 @@
         </span>
         <span class="toolbar-group">
           <button type="button" id="btn-export-layout" title="Download this layout as a JSON file">Export</button>
+          <button type="button" id="btn-share-link" title="Copy a link that opens this layout in someone else's browser">Copy link</button>
+          <button type="button" id="btn-export-image" title="Download a picture (PNG) of this layout">Export image</button>
           <button type="button" id="btn-import-layout" title="Load a layout from a JSON file">Import</button>
           <input type="file" id="import-layout-file" accept="application/json,.json" hidden />
         </span>
@@ -75,6 +82,8 @@
           <select id="load-layout-select" class="toolbar-select" aria-label="Load saved layout">
             <option value="">— Select to load —</option>
           </select>
+          <button type="button" id="btn-rename-layout" disabled title="Rename the saved layout to the name in the box">Rename</button>
+          <button type="button" id="btn-duplicate-layout" title="Save a copy of this layout under a new name">Duplicate</button>
           <button type="button" id="btn-delete-layout" disabled title="Delete current layout">Delete layout</button>
         </span>
       </div>
@@ -114,6 +123,15 @@
       <line id="rubber-band" class="rubber-band" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrowhead)" />
     </svg>
   </main>
+  <section id="parts-panel" class="parts-panel" aria-label="Parts and cables list" hidden>
+    <div class="parts-actions">
+      <button type="button" id="btn-parts-print">Print</button>
+      <button type="button" id="btn-parts-csv">Copy as CSV</button>
+      <button type="button" id="btn-parts-close">Close</button>
+    </div>
+    <h2 id="parts-title"></h2>
+    <div id="parts-body"></div>
+  </section>
 
   <script src="js/config.js"></script>
   <script src="js/port-type-default.js"></script>

@@ -1,0 +1,124 @@
+{
+  "id": null,
+  "name": "Headphone desk (freeform)",
+  "devices": [
+    {
+      "id": "hp_laptop",
+      "type": "Laptop",
+      "label": "Laptop",
+      "position": {
+        "x": 60,
+        "y": 120
+      },
+      "input_ports": [],
+      "output_ports": [
+        {
+          "name": "USB",
+          "type": "usb_audio"
+        }
+      ],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 1
+    },
+    {
+      "id": "hp_dac",
+      "type": "DAC",
+      "label": "DAC",
+      "position": {
+        "x": 300,
+        "y": 120
+      },
+      "input_ports": [
+        {
+          "name": "USB",
+          "type": "usb_audio"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "RCA Out",
+          "type": "rca"
+        }
+      ],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 1
+    },
+    {
+      "id": "hp_amp",
+      "type": "Headphone amp",
+      "label": "Headphone amp",
+      "position": {
+        "x": 540,
+        "y": 120
+      },
+      "input_ports": [
+        {
+          "name": "RCA In",
+          "type": "rca"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "Phones",
+          "type": "trs_quarter"
+        }
+      ],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 1
+    },
+    {
+      "id": "hp_phones",
+      "type": "Headphones",
+      "label": "Headphones",
+      "position": {
+        "x": 780,
+        "y": 120
+      },
+      "input_ports": [
+        {
+          "name": "Cable",
+          "type": "trs_quarter"
+        }
+      ],
+      "output_ports": [],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 1
+    }
+  ],
+  "connections": [
+    {
+      "id": "hp_c1",
+      "from_device_id": "hp_laptop",
+      "to_device_id": "hp_dac",
+      "from_port": "USB",
+      "to_port": "USB",
+      "from_port_type": "usb_audio",
+      "to_port_type": "usb_audio"
+    },
+    {
+      "id": "hp_c2",
+      "from_device_id": "hp_dac",
+      "to_device_id": "hp_amp",
+      "from_port": "RCA Out",
+      "to_port": "RCA In",
+      "from_port_type": "rca",
+      "to_port_type": "rca"
+    },
+    {
+      "id": "hp_c3",
+      "from_device_id": "hp_amp",
+      "to_device_id": "hp_phones",
+      "from_port": "Phones",
+      "to_port": "Cable",
+      "from_port_type": "trs_quarter",
+      "to_port_type": "trs_quarter"
+    }
+  ],
+  "racks": [],
+  "port_layout": "sides",
+  "mode": "classic"
+}

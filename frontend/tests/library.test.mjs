@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { checkRackFit } from '../js/rack-geometry.js';
-import { mergeById, normalizeDeviceTypes, uniqueName, copyLayout, pageForLayout } from '../js/library-core.js';
+import { mergeById, normalizeDeviceTypes, uniqueName, copyLayout, pageForLayout, parseLayoutsFile, importLayouts, baseName, installState, removeById, buildBackup, parseImportFile, storageSummary, formatChars, backupNudge } from '../js/library-core.js';
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (file) => JSON.parse(fs.readFileSync(path.join(frontend, file), 'utf8'));
@@ -37,17 +37,31 @@ describe('library files', () => {
     expect(new Set(pack.map((t) => t.id)).size).toBe(pack.length);
   });
 
-  test.each(manifest.layouts.map((e) => [e.id, e]))('layout %s is a valid rack layout', (_id, e) => {
+  const packTypes = new Map(manifest.device_types.flatMap((e) => readJson(e.file)).map((t) => [t.id, t]));
+
+  test.each(manifest.layouts.map((e) => [e.id, e]))('layout %s is a valid layout', (_id, e) => {
     const layout = readJson(e.file);
-    expect(layout.mode).toBe('rack');
+    expect(['rack', 'classic']).toContain(layout.mode);
     const ids = new Set(layout.devices.map((d) => d.id));
     expect(ids.size).toBe(layout.devices.length);
 
-    // every device fits its rack without clashing with another
-    layout.devices.forEach((d) => {
-      const rack = layout.racks.find((r) => r.id === d.rack_id);
-      expect(rack).toBeDefined();
-      expect(checkRackFit(rack, d, d.rack_u, d.rack_x, layout.devices)).toBeNull();
+    if (layout.mode === 'rack') {
+      // every device fits its rack without clashing with another
+      layout.devices.forEach((d) => {
+        const rack = layout.racks.find((r) => r.id === d.rack_id);
+        expect(rack).toBeDefined();
+        expect(checkRackFit(rack, d, d.rack_u, d.rack_x, layout.devices)).toBeNull();
+      });
+    } else {
+      // the freeform page has no racks
+      expect(layout.racks || []).toEqual([]);
+      layout.devices.forEach((d) => expect(d.rack_id ?? null).toBeNull());
+    }
+
+    // a device made from a library pack type matches that type exactly (so the pack and the example never drift)
+    layout.devices.filter((d) => d.template_id && packTypes.has(d.template_id)).forEach((d) => {
+      const t = packTypes.get(d.template_id);
+      expect([d.width_in, d.height_u, d.input_ports, d.output_ports]).toEqual([t.width_in, t.height_u, t.input_ports, t.output_ports]);
     });
 
     // every cable joins two real ports of the same type
@@ -60,6 +74,22 @@ describe('library files', () => {
       expect(out.type).toBe(inp.type);
       expect(c.from_port_type).toBe(out.type);
     });
+  });
+
+  test('every pack type is in a rack width that matches its name, and the packs cover 6, 10 and 19 inch racks', () => {
+    const widths = new Set();
+    manifest.device_types.forEach((e) => readJson(e.file).forEach((t) => {
+      widths.add(t.width_in);
+      expect(t.name).toContain(`${t.width_in}"`);
+    }));
+    expect([...widths].sort((a, b) => a - b)).toEqual([6, 10, 19]);
+  });
+
+  test('the library has rack examples for every rack width, plus a freeform one', () => {
+    const layouts = manifest.layouts.map((e) => readJson(e.file));
+    const rackWidths = new Set(layouts.flatMap((l) => (l.racks || []).map((r) => r.width_in)));
+    expect([...rackWidths].sort((a, b) => a - b)).toEqual([6, 10, 19]);
+    expect(layouts.some((l) => l.mode === 'classic')).toBe(true);
   });
 
   test('The Crap Rack is a 6" rack holding a 2U mount and three 1U devices', () => {
@@ -96,5 +126,81 @@ describe('library helpers', () => {
     expect(pageForLayout({ mode: 'classic' })).toBe('classic.html');
     expect(pageForLayout({ mode: 'rack' })).toBe('index.html');
     expect(pageForLayout({})).toBe('index.html');
+  });
+
+  test('parseLayoutsFile reads one layout or an array, and rejects anything else', () => {
+    expect(parseLayoutsFile('{"name":"A","devices":[]}')).toHaveLength(1);
+    expect(parseLayoutsFile('[{"name":"A","devices":[]},{"name":"B","devices":[]}]')).toHaveLength(2);
+    expect(() => parseLayoutsFile('nope')).toThrow('not a JSON file');
+    expect(() => parseLayoutsFile('[]')).toThrow('not a layouts file');
+    expect(() => parseLayoutsFile('{"name":"A"}')).toThrow('not a layouts file');
+    expect(() => parseLayoutsFile('[{"devices":[]},{"x":1}]')).toThrow('not a layouts file');
+  });
+
+  test('importLayouts adds copies with fresh ids and names that never clash', () => {
+    let n = 0;
+    const saved = [{ id: 'old', name: 'Rack', devices: [] }];
+    const out = importLayouts([{ id: 'x', name: 'Rack', devices: [] }, { id: 'y', name: 'Rack', devices: [] }], saved, () => `new_${++n}`);
+    expect(out.map((l) => [l.id, l.name])).toEqual([['old', 'Rack'], ['new_1', 'Rack (2)'], ['new_2', 'Rack (3)']]);
+    expect(saved).toHaveLength(1);
+  });
+
+  test('baseName drops a trailing copy number only', () => {
+    expect(baseName('Desk (2)')).toBe('Desk');
+    expect(baseName('Desk (12)')).toBe('Desk');
+    expect(baseName('Desk (mk2)')).toBe('Desk (mk2)');
+    expect(baseName('(3)')).toBe('(3)');
+  });
+
+  test('installState reports none, some or all of a pack as present', () => {
+    const pack = [{ id: 'a' }, { id: 'b' }];
+    expect(installState(pack, [])).toBe('none');
+    expect(installState(pack, [{ id: 'a' }, { id: 'z' }])).toBe('some');
+    expect(installState(pack, [{ id: 'b' }, { id: 'a' }, { id: 'z' }])).toBe('all');
+    expect(installState([], [{ id: 'a' }])).toBe('none');
+  });
+
+  test('removeById drops only the pack items and leaves the rest', () => {
+    const out = removeById([{ id: 'a' }, { id: 'mine' }, { id: 'b' }], [{ id: 'a' }, { id: 'b' }]);
+    expect(out).toEqual([{ id: 'mine' }]);
+  });
+
+  test('a full backup round-trips through parseImportFile', () => {
+    const backup = buildBackup([{ name: 'L', devices: [] }], [{ id: 'd1' }], [{ id: 'p1' }], new Date('2026-10-04T00:00:00Z'));
+    expect(backup.exported_at).toBe('2026-10-04T00:00:00.000Z');
+    const parsed = parseImportFile(JSON.stringify(backup));
+    expect(parsed.layouts).toHaveLength(1);
+    expect(parsed.deviceTypes).toEqual([{ id: 'd1' }]);
+    expect(parsed.portTypes).toEqual([{ id: 'p1' }]);
+  });
+
+  test('parseImportFile still reads a single layout or an array, with no types', () => {
+    expect(parseImportFile('{"name":"A","devices":[]}')).toEqual({ layouts: [{ name: 'A', devices: [] }], deviceTypes: [], portTypes: [] });
+    expect(parseImportFile('[{"devices":[]},{"devices":[]}]').layouts).toHaveLength(2);
+  });
+
+  test('parseImportFile rejects broken backups', () => {
+    const bad = (o) => () => parseImportFile(JSON.stringify(o));
+    expect(() => parseImportFile('nope')).toThrow('not a JSON file');
+    expect(bad({ app: 'audio_gear_layout', layouts: [{ name: 'x' }] })).toThrow('not a layouts file');
+    expect(bad({ app: 'audio_gear_layout', layouts: [], device_types: 'x' })).toThrow('not a backup file');
+    expect(bad({ app: 'audio_gear_layout', layouts: [], port_types: [{ name: 'no id' }] })).toThrow('not a backup file');
+    expect(parseImportFile(JSON.stringify({ app: 'audio_gear_layout', layouts: [] }))).toEqual({ layouts: [], deviceTypes: [], portTypes: [] });
+  });
+
+  test('storageSummary and formatChars size what is stored', () => {
+    expect(storageSummary([['ab', 'cde'], ['f', null]])).toEqual({ keys: 2, chars: 6 });
+    expect(formatChars(500)).toBe('500 B');
+    expect(formatChars(12345)).toBe('12 KB');
+    expect(formatChars(2500000)).toBe('2.5 MB');
+  });
+
+  test('backupNudge only speaks up for unsaved-elsewhere layouts or an old backup', () => {
+    const now = new Date('2026-10-04T00:00:00Z');
+    expect(backupNudge(null, 0, now)).toBe('');
+    expect(backupNudge(null, 1, now)).toContain('never been backed up');
+    expect(backupNudge('garbage', 2, now)).toContain('2 saved layouts');
+    expect(backupNudge('2026-09-30T00:00:00Z', 3, now)).toBe('');
+    expect(backupNudge('2026-08-01T00:00:00Z', 3, now)).toContain('64 days ago');
   });
 });

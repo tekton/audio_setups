@@ -17,6 +17,8 @@
 [docs/ENGINEERING.md](docs/ENGINEERING.md) for full guidelines. Summary: simplicity first, minimal deps, single source of truth, cable drag-and-drop with feedback, keep docs updated.
 
 Do not try to commit to git, allow the user to do that
+
+Ask for approval before every `git push` (and before opening or merging a PR or creating a release); an earlier approval does not carry over to later pushes.
 ---
 
 ## Tests
