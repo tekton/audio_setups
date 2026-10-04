@@ -41,7 +41,7 @@ test('a rack example appears on the rack page only, not the classic page', async
 
 test('adding the device pack puts its devices in the Add device dropdown', async ({ page }) => {
   await page.goto('/library.html');
-  await page.locator('#library-device-types li').getByRole('button').click();
+  await page.locator('#library-device-types li', { hasText: 'Compact 6' }).getByRole('button', { name: 'Add to my devices' }).click();
   await expect(page.locator('#library-status')).toContainText('Added 4 device types');
   await openApp(page, 'index');
   await expect(page.locator('#add-device-select option', { hasText: 'Mac mini mount (6")' })).toHaveCount(1);
@@ -151,4 +151,33 @@ test('Import rejects files that are not layouts and saves nothing', async ({ pag
   await importFile(page, 'bad2.json', '[{"name":"x"}]');
   await expect(page.locator('#library-status')).toContainText('Import failed: not a layouts file');
   expect(await names(page)).toEqual([]);
+});
+
+const EXAMPLES = [
+  { name: 'Desktop 10" rack', page: /index\.html$/, racks: 1, devices: 4, cables: 3 },
+  { name: 'Two-channel listening rack', page: /index\.html$/, racks: 1, devices: 3, cables: 2 },
+  { name: 'Headphone desk (freeform)', page: /classic\.html$/, racks: 0, devices: 4, cables: 3 },
+];
+
+for (const ex of EXAMPLES) {
+  test(`opening "${ex.name}" shows ${ex.devices} devices and ${ex.cables} cables on the right page`, async ({ page }) => {
+    await page.goto('/library.html');
+    await page.locator('#library-layouts li', { hasText: ex.name }).getByRole('button', { name: 'Open a copy' }).click();
+    await page.waitForURL(ex.page);
+    await expect(page.locator('.rack-frame')).toHaveCount(ex.racks);
+    await expect(page.locator('.device-block')).toHaveCount(ex.devices);
+    await expect(page.locator('.cable')).toHaveCount(ex.cables);
+    await expect(page.locator('#layout-name')).toHaveValue(ex.name);
+  });
+}
+
+test('the 10" and 19" packs add their devices to the Add device dropdown', async ({ page }) => {
+  await page.goto('/library.html');
+  for (const pack of ['Desktop 10" gear', 'Full-width 19" gear']) {
+    await page.locator('#library-device-types li', { hasText: pack }).getByRole('button', { name: 'Add to my devices' }).click();
+    await expect(page.locator('#library-device-types li', { hasText: pack })).toContainText('Installed');
+  }
+  await page.goto('/index.html');
+  const values = await page.locator('#add-device-select option').evaluateAll((os) => os.map((o) => o.value));
+  expect(values).toEqual(expect.arrayContaining(['template:lib_dac_10in', 'template:lib_power_amp_19in']));
 });

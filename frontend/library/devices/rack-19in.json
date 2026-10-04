@@ -1,0 +1,100 @@
+[
+  {
+    "id": "lib_cd_transport_19in",
+    "name": "CD transport (19\")",
+    "label": "CD transport (19\")",
+    "width_in": 19,
+    "height_u": 1,
+    "input_ports": [],
+    "output_ports": [
+      {
+        "name": "Coax Out",
+        "type": "spdif_coax"
+      },
+      {
+        "name": "Optical Out",
+        "type": "toslink"
+      }
+    ]
+  },
+  {
+    "id": "lib_network_streamer_19in",
+    "name": "Network streamer (19\")",
+    "label": "Network streamer (19\")",
+    "width_in": 19,
+    "height_u": 1,
+    "input_ports": [],
+    "output_ports": [
+      {
+        "name": "USB",
+        "type": "usb_audio"
+      },
+      {
+        "name": "Coax Out",
+        "type": "spdif_coax"
+      },
+      {
+        "name": "RCA Out",
+        "type": "rca"
+      }
+    ]
+  },
+  {
+    "id": "lib_preamp_19in",
+    "name": "Preamp (19\")",
+    "label": "Preamp (19\")",
+    "width_in": 19,
+    "height_u": 1,
+    "input_ports": [
+      {
+        "name": "RCA 1",
+        "type": "rca"
+      },
+      {
+        "name": "RCA 2",
+        "type": "rca"
+      },
+      {
+        "name": "Phono",
+        "type": "phono"
+      },
+      {
+        "name": "XLR In",
+        "type": "xlr_balanced"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "RCA Out",
+        "type": "rca"
+      },
+      {
+        "name": "XLR Out",
+        "type": "xlr_balanced"
+      }
+    ]
+  },
+  {
+    "id": "lib_power_amp_19in",
+    "name": "Power amp (19\")",
+    "label": "Power amp (19\")",
+    "width_in": 19,
+    "height_u": 3,
+    "input_ports": [
+      {
+        "name": "XLR In",
+        "type": "xlr_balanced"
+      },
+      {
+        "name": "RCA In",
+        "type": "rca"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "Speakers",
+        "type": "speaker_binding"
+      }
+    ]
+  }
+]

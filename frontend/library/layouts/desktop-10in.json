@@ -1,0 +1,176 @@
+{
+  "id": null,
+  "name": "Desktop 10\" rack",
+  "devices": [
+    {
+      "id": "d10_streamer",
+      "type": "Streamer (10\")",
+      "label": "Streamer (10\")",
+      "position": {
+        "x": 96,
+        "y": 64
+      },
+      "input_ports": [],
+      "output_ports": [
+        {
+          "name": "USB",
+          "type": "usb_audio"
+        },
+        {
+          "name": "Coax Out",
+          "type": "spdif_coax"
+        }
+      ],
+      "template_id": "lib_streamer_10in",
+      "width_in": 10,
+      "height_u": 1,
+      "rack_id": "desk10",
+      "rack_u": 6,
+      "rack_x": 0
+    },
+    {
+      "id": "d10_dac",
+      "type": "DAC (10\")",
+      "label": "DAC (10\")",
+      "position": {
+        "x": 96,
+        "y": 120
+      },
+      "input_ports": [
+        {
+          "name": "USB",
+          "type": "usb_audio"
+        },
+        {
+          "name": "Coax",
+          "type": "spdif_coax"
+        },
+        {
+          "name": "Optical",
+          "type": "toslink"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "RCA Out",
+          "type": "rca"
+        },
+        {
+          "name": "XLR Out",
+          "type": "xlr_balanced"
+        }
+      ],
+      "template_id": "lib_dac_10in",
+      "width_in": 10,
+      "height_u": 1,
+      "rack_id": "desk10",
+      "rack_u": 5,
+      "rack_x": 0
+    },
+    {
+      "id": "d10_pre",
+      "type": "Preamp (10\")",
+      "label": "Preamp (10\")",
+      "position": {
+        "x": 96,
+        "y": 176
+      },
+      "input_ports": [
+        {
+          "name": "RCA 1",
+          "type": "rca"
+        },
+        {
+          "name": "RCA 2",
+          "type": "rca"
+        },
+        {
+          "name": "Phono",
+          "type": "phono"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "RCA Out",
+          "type": "rca"
+        }
+      ],
+      "template_id": "lib_preamp_10in",
+      "width_in": 10,
+      "height_u": 1,
+      "rack_id": "desk10",
+      "rack_u": 4,
+      "rack_x": 0
+    },
+    {
+      "id": "d10_amp",
+      "type": "Power amp (10\")",
+      "label": "Power amp (10\")",
+      "position": {
+        "x": 96,
+        "y": 232
+      },
+      "input_ports": [
+        {
+          "name": "RCA In",
+          "type": "rca"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "Speakers",
+          "type": "speaker_binding"
+        }
+      ],
+      "template_id": "lib_power_amp_10in",
+      "width_in": 10,
+      "height_u": 2,
+      "rack_id": "desk10",
+      "rack_u": 2,
+      "rack_x": 0
+    }
+  ],
+  "connections": [
+    {
+      "id": "desk10_c1",
+      "from_device_id": "d10_streamer",
+      "to_device_id": "d10_dac",
+      "from_port": "USB",
+      "to_port": "USB",
+      "from_port_type": "usb_audio",
+      "to_port_type": "usb_audio"
+    },
+    {
+      "id": "desk10_c2",
+      "from_device_id": "d10_dac",
+      "to_device_id": "d10_pre",
+      "from_port": "RCA Out",
+      "to_port": "RCA 1",
+      "from_port_type": "rca",
+      "to_port_type": "rca"
+    },
+    {
+      "id": "desk10_c3",
+      "from_device_id": "d10_pre",
+      "to_device_id": "d10_amp",
+      "from_port": "RCA Out",
+      "to_port": "RCA In",
+      "from_port_type": "rca",
+      "to_port_type": "rca"
+    }
+  ],
+  "racks": [
+    {
+      "id": "desk10",
+      "label": "Desktop 10\"",
+      "width_in": 10,
+      "height_u": 6,
+      "position": {
+        "x": 80,
+        "y": 40
+      }
+    }
+  ],
+  "port_layout": "top_bottom",
+  "mode": "rack"
+}

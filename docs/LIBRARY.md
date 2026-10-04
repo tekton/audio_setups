@@ -10,11 +10,17 @@
 
 Merging and copying logic is in `frontend/js/library-core.js` (pure, unit tested); `frontend/js/library.js` is the page wiring.
 
+## What ships
+
+- **Layouts**: The Crap Rack (6"), Desktop 10" rack, Home stereo rack and Two-channel listening rack (19"), and Headphone desk (a freeform Classic-page layout).
+- **Device packs**: Compact 6" gear, Desktop 10" gear, Full-width 19" gear. Every pack type has its rack width in its name, and `npm test` keeps each example's devices identical to the pack types they come from.
+- **Port types**: Common audio connectors.
+
 ## Adding to the library
 
 1. Drop a JSON file in `frontend/library/devices/` (an array of device types: `id`, `name`, `label`, `width_in` 6/10/19, `height_u`, `input_ports`, `output_ports` as `{name, type}`) or `frontend/library/layouts/` (a layout exported with **Save & load > Export**, or hand-built; keep `id: null` and `mode`).
 2. List it in `frontend/library/index.json` with an `id`, `name`, `description` and `file` (path relative to `frontend/`).
-3. Run `npm test`. `frontend/tests/library.test.mjs` checks every listed file: it exists, sizes and port types are valid, every racked device fits its rack without overlap, and every cable joins real ports of the same type. A layout example is easiest to author by building it in the app and exporting it.
+3. Run `npm test`. `frontend/tests/library.test.mjs` checks every listed file: it exists, sizes and port types are valid, every racked device fits its rack without overlap (rack layouts) or has no rack (classic layouts), devices built from a pack type match it exactly, and every cable joins real ports of the same type. A layout example is easiest to author by building it in the app and exporting it.
 
 Use stable ids for device types (`lib_...`): layouts reference them through `template_id`, and re-adding a pack replaces the earlier copy instead of duplicating it.
 

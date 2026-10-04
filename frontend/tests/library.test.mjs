@@ -37,17 +37,31 @@ describe('library files', () => {
     expect(new Set(pack.map((t) => t.id)).size).toBe(pack.length);
   });
 
-  test.each(manifest.layouts.map((e) => [e.id, e]))('layout %s is a valid rack layout', (_id, e) => {
+  const packTypes = new Map(manifest.device_types.flatMap((e) => readJson(e.file)).map((t) => [t.id, t]));
+
+  test.each(manifest.layouts.map((e) => [e.id, e]))('layout %s is a valid layout', (_id, e) => {
     const layout = readJson(e.file);
-    expect(layout.mode).toBe('rack');
+    expect(['rack', 'classic']).toContain(layout.mode);
     const ids = new Set(layout.devices.map((d) => d.id));
     expect(ids.size).toBe(layout.devices.length);
 
-    // every device fits its rack without clashing with another
-    layout.devices.forEach((d) => {
-      const rack = layout.racks.find((r) => r.id === d.rack_id);
-      expect(rack).toBeDefined();
-      expect(checkRackFit(rack, d, d.rack_u, d.rack_x, layout.devices)).toBeNull();
+    if (layout.mode === 'rack') {
+      // every device fits its rack without clashing with another
+      layout.devices.forEach((d) => {
+        const rack = layout.racks.find((r) => r.id === d.rack_id);
+        expect(rack).toBeDefined();
+        expect(checkRackFit(rack, d, d.rack_u, d.rack_x, layout.devices)).toBeNull();
+      });
+    } else {
+      // the freeform page has no racks
+      expect(layout.racks || []).toEqual([]);
+      layout.devices.forEach((d) => expect(d.rack_id ?? null).toBeNull());
+    }
+
+    // a device made from a library pack type matches that type exactly (so the pack and the example never drift)
+    layout.devices.filter((d) => d.template_id && packTypes.has(d.template_id)).forEach((d) => {
+      const t = packTypes.get(d.template_id);
+      expect([d.width_in, d.height_u, d.input_ports, d.output_ports]).toEqual([t.width_in, t.height_u, t.input_ports, t.output_ports]);
     });
 
     // every cable joins two real ports of the same type
@@ -60,6 +74,22 @@ describe('library files', () => {
       expect(out.type).toBe(inp.type);
       expect(c.from_port_type).toBe(out.type);
     });
+  });
+
+  test('every pack type is in a rack width that matches its name, and the packs cover 6, 10 and 19 inch racks', () => {
+    const widths = new Set();
+    manifest.device_types.forEach((e) => readJson(e.file).forEach((t) => {
+      widths.add(t.width_in);
+      expect(t.name).toContain(`${t.width_in}"`);
+    }));
+    expect([...widths].sort((a, b) => a - b)).toEqual([6, 10, 19]);
+  });
+
+  test('the library has rack examples for every rack width, plus a freeform one', () => {
+    const layouts = manifest.layouts.map((e) => readJson(e.file));
+    const rackWidths = new Set(layouts.flatMap((l) => (l.racks || []).map((r) => r.width_in)));
+    expect([...rackWidths].sort((a, b) => a - b)).toEqual([6, 10, 19]);
+    expect(layouts.some((l) => l.mode === 'classic')).toBe(true);
   });
 
   test('The Crap Rack is a 6" rack holding a 2U mount and three 1U devices', () => {
