@@ -6,6 +6,7 @@
 import * as geo from './rack-geometry.js';
 import { U_PX, RACK_PAD, RACK_HEADER } from './rack-geometry.js';
 import { uniqueName, baseName } from './library-core.js';
+import { canvasToPng, downloadBlob } from './image-export.js';
 
 // 'classic' is the freeform view: no racks, ports on the sides by default. Layouts are kept per mode.
 const MODE = document.body.dataset.mode === 'classic' ? 'classic' : 'rack';
@@ -1332,6 +1333,19 @@ document.getElementById('btn-export-layout').addEventListener('click', () => {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+document.getElementById('btn-export-image').addEventListener('click', async () => {
+  if (!state.devices.length && !state.racks.length) {
+    showWarningMessage('Nothing to export yet. Add a device or rack first.');
+    return;
+  }
+  try {
+    const name = (document.getElementById('layout-name').value.trim() || 'layout').replace(/[^\w.-]+/g, '_');
+    downloadBlob(await canvasToPng(canvas), `${name}.png`);
+  } catch (e) {
+    alert('Image export failed: ' + e.message);
+  }
 });
 
 document.getElementById('btn-import-layout').addEventListener('click', () => {
