@@ -32,7 +32,8 @@ Use stable ids for device types (`lib_...`): layouts reference them through `tem
 
 ## Known limits
 
-- Ports in a stacked rack are on the top and bottom edges, so cables between non-adjacent devices run straight through the devices in between. Ordering a rack so signal flows between neighbours (or using "Ports on sides") keeps them readable.
+- Ports in a stacked rack are on the top and bottom edges. A cable that would cut through a device is drawn along the seam out to a channel in the rack's side rail, up or down, and back in, so it never crosses a device (`cableRoute` in `frontend/js/rack-geometry.js`). Cables between neighbours stay straight. Side ports ("Ports on sides") always stay straight; very busy racks can still look crowded, and ordering devices so signal flows between neighbours keeps them tidiest.
+- **Convert to rack** (Classic page, Save & load panel) saves a rack version of the current layout as a new layout "<name> (rack)" and opens it: one rack per device width (6", 10", 19"), devices stacked top to bottom in signal-flow order, cables carried over. The classic layout is left as it is.
 - Layouts only come from the shipped library or a file the user imports; there's no user-to-user sharing beyond Export/Import.
 
 ## Your data, backups and installed packs

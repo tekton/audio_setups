@@ -346,6 +346,8 @@ function renderCables() {
     defs.querySelectorAll('marker.cable-marker').forEach((m) => m.remove());
   }
   cablesLayer.innerHTML = '';
+  const deviceRects = state.devices.map((d) => ({ ...getDevicePosition(d), w: getDeviceSize(d).w, h: getDeviceSize(d).h }));
+  let rerouted = 0; // cables sent around devices so far; each gets its own lane
   state.connections.forEach((c) => {
     const endpoints = getConnectionEndpoints(c);
     if (!endpoints) return;
@@ -368,13 +370,12 @@ function renderCables() {
       marker.appendChild(poly);
       defs.appendChild(marker);
     }
-    const line = document.createElementNS(svgNs, 'line');
+    const route = geo.cableRoute(a, b, deviceRects, rerouted);
+    if (route.length > 2) rerouted += 1;
+    const line = document.createElementNS(svgNs, 'path');
     line.setAttribute('class', 'cable' + (c.id === state.selectedConnectionId ? ' selected' : ''));
     line.dataset.connectionId = c.id;
-    line.setAttribute('x1', a.x);
-    line.setAttribute('y1', a.y);
-    line.setAttribute('x2', b.x);
-    line.setAttribute('y2', b.y);
+    line.setAttribute('d', route.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' '));
     line.setAttribute('marker-end', 'url(#' + markerId + ')');
     line.style.stroke = color;
     cablesLayer.appendChild(line);
@@ -1347,6 +1348,23 @@ document.getElementById('btn-share-link').addEventListener('click', async () => 
     showWarningMessage(url.length > LONG_LINK ? 'Link copied, but it is very long; some apps may cut it off. Use Export to send a file instead.' : 'Link copied. Anyone who opens it gets their own copy.');
   } catch {
     window.prompt('Copy this link:', url);
+  }
+});
+
+// Classic page only: save a rack version of this layout as a new layout and open it on the rack page
+document.getElementById('btn-convert-rack')?.addEventListener('click', async () => {
+  if (!state.devices.length) {
+    showWarningMessage('Nothing to convert yet. Add some devices first.');
+    return;
+  }
+  try {
+    const rackLayout = geo.convertClassicToRack(currentLayoutBody());
+    const taken = (await storage.local.listLayouts()).map((l) => l.name);
+    rackLayout.name = uniqueName(`${baseName(state.name)} (rack)`, taken);
+    const saved = await storage.local.saveLayout(rackLayout);
+    window.location.href = `index.html?layout=${encodeURIComponent(saved.id)}`;
+  } catch (e) {
+    alert('Convert failed: ' + e.message);
   }
 });
 

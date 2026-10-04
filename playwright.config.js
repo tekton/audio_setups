@@ -1,7 +1,7 @@
 const { defineConfig, devices } = require('@playwright/test');
 
 const PORT = 4173;
-const MOBILE_SPECS = ['**/mobile.spec.js', '**/portability.spec.js', '**/image-export.spec.js', '**/share.spec.js'];
+const MOBILE_SPECS = ['**/mobile.spec.js', '**/portability.spec.js', '**/image-export.spec.js', '**/share.spec.js', '**/routing-convert.spec.js'];
 
 module.exports = defineConfig({
   testDir: 'e2e',
