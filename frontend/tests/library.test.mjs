@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { checkRackFit } from '../js/rack-geometry.js';
-import { mergeById, normalizeDeviceTypes, uniqueName, copyLayout, pageForLayout, parseLayoutsFile, importLayouts, baseName } from '../js/library-core.js';
+import { mergeById, normalizeDeviceTypes, uniqueName, copyLayout, pageForLayout, parseLayoutsFile, importLayouts, baseName, installState, removeById, buildBackup, parseImportFile, storageSummary, formatChars, backupNudge } from '../js/library-core.js';
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (file) => JSON.parse(fs.readFileSync(path.join(frontend, file), 'utf8'));
@@ -120,5 +120,57 @@ describe('library helpers', () => {
     expect(baseName('Desk (12)')).toBe('Desk');
     expect(baseName('Desk (mk2)')).toBe('Desk (mk2)');
     expect(baseName('(3)')).toBe('(3)');
+  });
+
+  test('installState reports none, some or all of a pack as present', () => {
+    const pack = [{ id: 'a' }, { id: 'b' }];
+    expect(installState(pack, [])).toBe('none');
+    expect(installState(pack, [{ id: 'a' }, { id: 'z' }])).toBe('some');
+    expect(installState(pack, [{ id: 'b' }, { id: 'a' }, { id: 'z' }])).toBe('all');
+    expect(installState([], [{ id: 'a' }])).toBe('none');
+  });
+
+  test('removeById drops only the pack items and leaves the rest', () => {
+    const out = removeById([{ id: 'a' }, { id: 'mine' }, { id: 'b' }], [{ id: 'a' }, { id: 'b' }]);
+    expect(out).toEqual([{ id: 'mine' }]);
+  });
+
+  test('a full backup round-trips through parseImportFile', () => {
+    const backup = buildBackup([{ name: 'L', devices: [] }], [{ id: 'd1' }], [{ id: 'p1' }], new Date('2026-10-04T00:00:00Z'));
+    expect(backup.exported_at).toBe('2026-10-04T00:00:00.000Z');
+    const parsed = parseImportFile(JSON.stringify(backup));
+    expect(parsed.layouts).toHaveLength(1);
+    expect(parsed.deviceTypes).toEqual([{ id: 'd1' }]);
+    expect(parsed.portTypes).toEqual([{ id: 'p1' }]);
+  });
+
+  test('parseImportFile still reads a single layout or an array, with no types', () => {
+    expect(parseImportFile('{"name":"A","devices":[]}')).toEqual({ layouts: [{ name: 'A', devices: [] }], deviceTypes: [], portTypes: [] });
+    expect(parseImportFile('[{"devices":[]},{"devices":[]}]').layouts).toHaveLength(2);
+  });
+
+  test('parseImportFile rejects broken backups', () => {
+    const bad = (o) => () => parseImportFile(JSON.stringify(o));
+    expect(() => parseImportFile('nope')).toThrow('not a JSON file');
+    expect(bad({ app: 'audio_gear_layout', layouts: [{ name: 'x' }] })).toThrow('not a layouts file');
+    expect(bad({ app: 'audio_gear_layout', layouts: [], device_types: 'x' })).toThrow('not a backup file');
+    expect(bad({ app: 'audio_gear_layout', layouts: [], port_types: [{ name: 'no id' }] })).toThrow('not a backup file');
+    expect(parseImportFile(JSON.stringify({ app: 'audio_gear_layout', layouts: [] }))).toEqual({ layouts: [], deviceTypes: [], portTypes: [] });
+  });
+
+  test('storageSummary and formatChars size what is stored', () => {
+    expect(storageSummary([['ab', 'cde'], ['f', null]])).toEqual({ keys: 2, chars: 6 });
+    expect(formatChars(500)).toBe('500 B');
+    expect(formatChars(12345)).toBe('12 KB');
+    expect(formatChars(2500000)).toBe('2.5 MB');
+  });
+
+  test('backupNudge only speaks up for unsaved-elsewhere layouts or an old backup', () => {
+    const now = new Date('2026-10-04T00:00:00Z');
+    expect(backupNudge(null, 0, now)).toBe('');
+    expect(backupNudge(null, 1, now)).toContain('never been backed up');
+    expect(backupNudge('garbage', 2, now)).toContain('2 saved layouts');
+    expect(backupNudge('2026-09-30T00:00:00Z', 3, now)).toBe('');
+    expect(backupNudge('2026-08-01T00:00:00Z', 3, now)).toContain('64 days ago');
   });
 });

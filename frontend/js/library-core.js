@@ -62,3 +62,66 @@ export function importLayouts(layouts, saved, newId) {
   });
   return [...saved, ...added];
 }
+
+// How much of a library pack is already in the user's list: 'all', 'some' or 'none' (matched by id).
+export function installState(packItems, existing) {
+  const have = new Set(existing.map((t) => t.id));
+  const present = packItems.filter((t) => have.has(t.id)).length;
+  if (!packItems.length || present === 0) return 'none';
+  return present === packItems.length ? 'all' : 'some';
+}
+
+// `existing` without the items that are in `packItems` (matched by id).
+export function removeById(existing, packItems) {
+  const drop = new Set(packItems.map((t) => t.id));
+  return existing.filter((t) => !drop.has(t.id));
+}
+
+// A whole-browser backup: layouts plus the custom device and port types, in one file.
+export function buildBackup(layouts, deviceTypes, portTypes, now = new Date()) {
+  return { app: 'audio_gear_layout', backup_version: 1, exported_at: now.toISOString(), layouts, device_types: deviceTypes, port_types: portTypes };
+}
+
+// Reads any file the Import button accepts: a full backup, an "Export all layouts" array, or one layout.
+// Returns { layouts, deviceTypes, portTypes }; throws if the file isn't one of those.
+export function parseImportFile(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('not a JSON file');
+  }
+  if (data && !Array.isArray(data) && data.app === 'audio_gear_layout' && Array.isArray(data.layouts)) {
+    const layouts = data.layouts.length ? parseLayoutsFile(JSON.stringify(data.layouts)) : [];
+    const types = (v) => {
+      if (v === undefined) return [];
+      if (!Array.isArray(v) || !v.every((t) => t && typeof t === 'object' && t.id)) throw new Error('not a backup file');
+      return v;
+    };
+    return { layouts, deviceTypes: types(data.device_types), portTypes: types(data.port_types) };
+  }
+  return { layouts: parseLayoutsFile(text), deviceTypes: [], portTypes: [] };
+}
+
+// Size of everything this site keeps in localStorage: { keys, chars }. `entries` is [[key, value], ...].
+export function storageSummary(entries) {
+  return { keys: entries.length, chars: entries.reduce((n, [k, v]) => n + k.length + (v || '').length, 0) };
+}
+
+// "12 KB" style size for a character count (localStorage counts UTF-16 characters; browsers allow ~5 million).
+export function formatChars(chars) {
+  if (chars < 1000) return `${chars} B`;
+  if (chars < 1000 * 1000) return `${Math.round(chars / 1000)} KB`;
+  return `${(chars / 1e6).toFixed(1)} MB`;
+}
+
+const NUDGE_AFTER_DAYS = 30;
+
+// Message about backing up, or '' when none is needed. Layouts only live in this browser, so remind people.
+export function backupNudge(lastBackupIso, layoutCount, now = new Date()) {
+  if (!layoutCount) return '';
+  const last = Date.parse(lastBackupIso);
+  if (Number.isNaN(last)) return `You have ${layoutCount} saved layout${layoutCount === 1 ? '' : 's'} that exist only in this browser and have never been backed up. Use Full backup to keep a copy.`;
+  const days = Math.floor((now.getTime() - last) / 86400000);
+  return days >= NUDGE_AFTER_DAYS ? `Your last backup was ${days} days ago. Use Full backup to refresh it.` : '';
+}

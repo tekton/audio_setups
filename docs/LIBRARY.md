@@ -29,9 +29,16 @@ Use stable ids for device types (`lib_...`): layouts reference them through `tem
 - Ports in a stacked rack are on the top and bottom edges, so cables between non-adjacent devices run straight through the devices in between. Ordering a rack so signal flows between neighbours (or using "Ports on sides") keeps them readable.
 - Layouts only come from the shipped library or a file the user imports; there's no user-to-user sharing beyond Export/Import.
 
-## Your layouts
+## Your data, backups and installed packs
 
-The Library page also has **Export all layouts** (every saved layout in one JSON file, `audio_gear_all_layouts.json`) and **Clear all layouts** (with a confirmation box; device and port types are kept). **Import layouts…** reads that file back (or a single exported layout) and adds each layout as a new copy with a fresh id and a non-clashing name, so it never overwrites what is saved.
+The Library page shows what this browser holds (layout, custom device-type and custom port-type counts, and roughly how much of the ~5 MB of local storage is used). If you have saved layouts and have never backed up, or the last backup is 30+ days old, it nudges you. Browsers can clear local storage, so layouts only exist in the one browser.
+
+- **Full backup** downloads `audio_gear_backup.json`: all layouts plus custom device and port types.
+- **Export all layouts** downloads `audio_gear_all_layouts.json` (layouts only). Both count as a backup for the nudge.
+- **Import…** reads a full backup, an Export all file or a single exported layout. Layouts are added as new copies (fresh id, a name that never clashes), so nothing is overwritten; a full backup's device and port types are merged by id.
+- **Clear all layouts** (confirmation box) deletes layouts only; types are kept.
+- Each device pack and port-type row shows **Installed** / **Partly installed** (matched by id) and has a **Remove** button that drops just that pack's types, not ones you made yourself.
+- The in-app **Duplicate** and **Rename** buttons (Save & load panel) copy or rename a saved layout, and **Export image** downloads a PNG of the canvas.
 
 ## System reset
 

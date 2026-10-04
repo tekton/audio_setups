@@ -192,3 +192,14 @@ header nav {
 .file-label:hover {
   background: #555;
 }
+
+.install-state {
+  margin-left: 0.5rem;
+  color: var(--cable-color);
+  font-style: normal;
+  font-size: 0.85rem;
+}
+
+.nudge {
+  color: #e0b020;
+}
