@@ -29,6 +29,10 @@ Use stable ids for device types (`lib_...`): layouts reference them through `tem
 - Ports in a stacked rack are on the top and bottom edges, so cables between non-adjacent devices run straight through the devices in between. Ordering a rack so signal flows between neighbours (or using "Ports on sides") keeps them readable.
 - Layouts only come from the shipped library or a file the user imports; there's no user-to-user sharing beyond Export/Import.
 
+## Your layouts
+
+The Library page also has **Export all layouts** (every saved layout in one JSON file, `audio_gear_all_layouts.json`) and **Clear all layouts** (with a confirmation box; device and port types are kept). The file is a JSON array of layouts. The app's Import button only reads a single layout file, so restoring from this backup is not supported yet.
+
 ## System reset
 
 The Library page has a **System reset** button (with a confirmation box). It removes every custom device type and port type from this browser, back to the built-in defaults. Saved layouts are not touched.

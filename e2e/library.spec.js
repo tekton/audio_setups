@@ -73,3 +73,48 @@ test('system reset needs confirmation and clears types but keeps saved layouts',
   await expect(page.locator('#library-status')).toContainText('System reset');
   expect(await keys()).toEqual([false, false, true]);
 });
+
+const SAVED = [
+  { id: 'l1', name: 'One', mode: 'rack', devices: [], connections: [] },
+  { id: 'l2', name: 'Two', mode: 'classic', devices: [], connections: [] },
+];
+
+test('Export all layouts downloads every saved layout as one JSON file', async ({ page }) => {
+  await page.goto('/library.html');
+  await page.evaluate((l) => localStorage.setItem('audio_gear_layouts', JSON.stringify(l)), SAVED);
+  const download = page.waitForEvent('download');
+  await page.locator('#library-export-layouts').click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('audio_gear_all_layouts.json');
+  const body = JSON.parse(require('fs').readFileSync(await file.path(), 'utf8'));
+  expect(body.map((l) => l.name)).toEqual(['One', 'Two']);
+  await expect(page.locator('#library-status')).toContainText('Exported 2 layouts');
+});
+
+test('Export all and Clear say so when there are no layouts', async ({ page }) => {
+  await page.goto('/library.html');
+  await page.locator('#library-export-layouts').click();
+  await expect(page.locator('#library-status')).toContainText('No saved layouts to export');
+  await page.locator('#library-clear-layouts').click();
+  await expect(page.locator('#library-status')).toContainText('No saved layouts to clear');
+});
+
+test('Clear all layouts needs confirmation and leaves device and port types alone', async ({ page }) => {
+  page.removeAllListeners('dialog');
+  await page.goto('/library.html');
+  await page.evaluate((l) => {
+    localStorage.setItem('audio_gear_layouts', JSON.stringify(l));
+    localStorage.setItem('audio_gear_device_types', '[]');
+    localStorage.setItem('audio_gear_port_types', '[]');
+  }, SAVED);
+  const keys = () => page.evaluate(() => ['audio_gear_layouts', 'audio_gear_device_types', 'audio_gear_port_types'].map((k) => localStorage.getItem(k) !== null));
+
+  page.once('dialog', (d) => d.dismiss());
+  await page.locator('#library-clear-layouts').click();
+  expect(await keys()).toEqual([true, true, true]);
+
+  page.once('dialog', (d) => { expect(d.message()).toContain('2 saved layouts'); d.accept(); });
+  await page.locator('#library-clear-layouts').click();
+  await expect(page.locator('#library-status')).toContainText('Cleared 2 layouts');
+  expect(await keys()).toEqual([false, true, true]);
+});

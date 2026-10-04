@@ -100,6 +100,35 @@ function systemReset() {
   }
 }
 
+function exportAllLayouts() {
+  const layouts = readList(LAYOUTS_KEY);
+  if (!layouts.length) { say('No saved layouts to export.'); return; }
+  const blob = new Blob([JSON.stringify(layouts, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'audio_gear_all_layouts.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  say(`Exported ${layouts.length} layout${layouts.length === 1 ? '' : 's'}.`);
+}
+
+function clearLayouts() {
+  const count = readList(LAYOUTS_KEY).length;
+  if (!count) { say('No saved layouts to clear.'); return; }
+  if (!window.confirm(`Delete all ${count} saved layout${count === 1 ? '' : 's'} from this browser?\n\nDevice types and port types are kept. This cannot be undone.`)) return;
+  try {
+    localStorage.removeItem(LAYOUTS_KEY);
+    say(`Cleared ${count} layout${count === 1 ? '' : 's'}. Device types and port types are untouched.`);
+  } catch {
+    say('Could not clear layouts (storage is blocked in this browser).');
+  }
+}
+
+document.getElementById('library-export-layouts').addEventListener('click', exportAllLayouts);
+document.getElementById('library-clear-layouts').addEventListener('click', clearLayouts);
 document.getElementById('library-reset').addEventListener('click', systemReset);
 
 async function init() {
