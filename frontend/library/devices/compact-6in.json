@@ -1,0 +1,77 @@
+[
+  {
+    "id": "lib_mac_mini_mount_6in",
+    "name": "Mac mini mount (6\")",
+    "label": "Mac mini mount (6\")",
+    "width_in": 6,
+    "height_u": 2,
+    "input_ports": [],
+    "output_ports": [
+      {
+        "name": "USB",
+        "type": "usb_audio"
+      }
+    ]
+  },
+  {
+    "id": "lib_dac_6in",
+    "name": "DAC (6\")",
+    "label": "DAC (6\")",
+    "width_in": 6,
+    "height_u": 1,
+    "input_ports": [
+      {
+        "name": "USB",
+        "type": "usb_audio"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "RCA Out",
+        "type": "rca"
+      }
+    ]
+  },
+  {
+    "id": "lib_headphone_amp_6in",
+    "name": "Headphone amp (6\")",
+    "label": "Headphone amp (6\")",
+    "width_in": 6,
+    "height_u": 1,
+    "input_ports": [
+      {
+        "name": "Line In",
+        "type": "rca"
+      },
+      {
+        "name": "Aux In",
+        "type": "rca"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "Phones",
+        "type": "trs_quarter"
+      }
+    ]
+  },
+  {
+    "id": "lib_phono_stage_6in",
+    "name": "Phono stage (6\")",
+    "label": "Phono stage (6\")",
+    "width_in": 6,
+    "height_u": 1,
+    "input_ports": [
+      {
+        "name": "Phono In",
+        "type": "phono"
+      }
+    ],
+    "output_ports": [
+      {
+        "name": "RCA Out",
+        "type": "rca"
+      }
+    ]
+  }
+]

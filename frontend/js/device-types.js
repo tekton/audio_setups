@@ -20,7 +20,7 @@ function getLocalPortTypes() {
 async function loadPortTypes() {
   let api = [];
   try {
-    const res = await fetch(`${API_BASE}/port-types`);
+    const res = await apiFetch(`${API_BASE}/port-types`);
     if (res.ok) api = await res.json();
   } catch (_) {}
   const local = getLocalPortTypes();
@@ -42,12 +42,16 @@ function getLocalTypes() {
 }
 
 function setLocalTypes(list) {
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+  } catch (_) {
+    alert('Could not save to this browser (storage is blocked or full). Private tabs and some privacy settings disable it.');
+  }
 }
 
 async function getApiTypes() {
   try {
-    const res = await fetch(`${API_BASE}/device-types`);
+    const res = await apiFetch(`${API_BASE}/device-types`);
     if (!res.ok) return [];
     return res.json();
   } catch {
@@ -147,6 +151,8 @@ function fillForm(t) {
   document.getElementById('template-name').value = t.name || '';
   document.getElementById('template-name').disabled = !!t.id;
   document.getElementById('template-label').value = t.label || '';
+  document.getElementById('template-width').value = String(t.width_in || 19);
+  document.getElementById('template-height').value = t.height_u || 1;
   inputPorts = (t.input_ports || []).map((p) => ({ name: typeof p === 'string' ? p : p.name, type: typeof p === 'string' ? 'audio' : (p.type || 'audio') }));
   outputPorts = (t.output_ports || []).map((p) => ({ name: typeof p === 'string' ? p : p.name, type: typeof p === 'string' ? 'audio' : (p.type || 'audio') }));
   renderPortRows('input-ports-container', inputPorts, null, portTypesList);
@@ -160,6 +166,8 @@ function clearForm() {
   document.getElementById('template-name').value = '';
   document.getElementById('template-name').disabled = false;
   document.getElementById('template-label').value = '';
+  document.getElementById('template-width').value = '19';
+  document.getElementById('template-height').value = 1;
   inputPorts = [];
   outputPorts = [];
   renderPortRows('input-ports-container', inputPorts, null, portTypesList);
@@ -183,6 +191,8 @@ function getFormData() {
     id: document.getElementById('template-id').value.trim() || undefined,
     name,
     label,
+    width_in: Number(document.getElementById('template-width').value),
+    height_u: Math.max(1, Math.floor(Number(document.getElementById('template-height').value)) || 1),
     input_ports: inputs.length ? inputs : inputPorts.slice(),
     output_ports: outputs.length ? outputs : outputPorts.slice(),
   };
@@ -215,7 +225,7 @@ async function saveServer() {
   try {
     const url = payload.id ? `${API_BASE}/device-types/${payload.id}` : `${API_BASE}/device-types`;
     const method = payload.id ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (!res.ok) throw new Error(await res.text());
     alert('Saved to server.');
     clearForm();
@@ -227,7 +237,7 @@ async function saveServer() {
 
 function exportJson() {
   loadMergedTypes().then((types) => {
-    const json = JSON.stringify(types.map((t) => ({ id: t.id, name: t.name, label: t.label, input_ports: t.input_ports || [], output_ports: t.output_ports || [] })), null, 2);
+    const json = JSON.stringify(types.map((t) => ({ id: t.id, name: t.name, label: t.label, width_in: t.width_in || 19, height_u: t.height_u || 1, input_ports: t.input_ports || [], output_ports: t.output_ports || [] })), null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -247,7 +257,7 @@ function importJson(file) {
       const byId = new Map(local.map((t) => [t.id, t]));
       list.forEach((t) => {
         const id = t.id || `dt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-        byId.set(id, { id, name: t.name || id, label: t.label || t.name, input_ports: t.input_ports || [], output_ports: t.output_ports || [] });
+        byId.set(id, { id, name: t.name || id, label: t.label || t.name, width_in: t.width_in || 19, height_u: t.height_u || 1, input_ports: t.input_ports || [], output_ports: t.output_ports || [] });
       });
       setLocalTypes(Array.from(byId.values()));
       alert('Imported.');
@@ -264,7 +274,7 @@ async function deleteType(id) {
   const local = getLocalTypes().filter((t) => t.id !== id);
   setLocalTypes(local);
   try {
-    await fetch(`${API_BASE}/device-types/${id}`, { method: 'DELETE' });
+    await apiFetch(`${API_BASE}/device-types/${id}`, { method: 'DELETE' });
   } catch (_) {}
   if (editingId === id) clearForm();
   loadMergedTypes().then(renderTypeList);

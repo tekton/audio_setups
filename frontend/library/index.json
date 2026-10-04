@@ -1,0 +1,32 @@
+{
+  "port_types": [
+    {
+      "id": "common-ports",
+      "name": "Common audio connectors",
+      "description": "XLR, TRS, TS, RCA, phono, Speakon, S/PDIF, TOSLINK, AES/EBU, HDMI ARC, USB audio, MIDI, Dante, with colors.",
+      "file": "audio-gear-port-types.json"
+    }
+  ],
+  "device_types": [
+    {
+      "id": "compact-6in",
+      "name": "Compact 6\" gear",
+      "description": "Mac mini mount (2U), DAC, headphone amp and phono stage, sized for a 6\" rack.",
+      "file": "library/devices/compact-6in.json"
+    }
+  ],
+  "layouts": [
+    {
+      "id": "crap-rack",
+      "name": "The Crap Rack",
+      "description": "A 6\" desktop rack: Mac mini on a 2U mount feeding a DAC, headphone amp and phono stage, all 1U.",
+      "file": "library/layouts/crap-rack.json"
+    },
+    {
+      "id": "home-stereo-19in",
+      "name": "Home stereo rack",
+      "description": "A full-width 19\" rack: turntable and phono pre-amp, a DAC and an EQ into a headphone amp.",
+      "file": "library/layouts/home-stereo-19in.json"
+    }
+  ]
+}

@@ -12,6 +12,7 @@
     <h1>Device types</h1>
     <nav>
       <a href="port-types.html" class="nav-link">Port types</a>
+      <a href="library.html" class="nav-link">Library</a>
       <a href="index.html" class="nav-link">← Layout</a>
     </nav>
   </header>
@@ -36,6 +37,18 @@
           <input type="text" id="template-label" placeholder="e.g. My Pre-amp" />
         </div>
         <div class="field">
+          <label for="template-width">Panel width</label>
+          <select id="template-width">
+            <option value="19">19"</option>
+            <option value="10">10"</option>
+            <option value="6">6"</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="template-height">Height (U)</label>
+          <input type="number" id="template-height" min="1" max="60" value="1" />
+        </div>
+        <div class="field">
           <label>Input ports (name + type)</label>
           <div id="input-ports-container" class="ports-container"></div>
           <button type="button" id="btn-add-input-port" class="btn-secondary">+ Add input port</button>
@@ -47,7 +60,7 @@
         </div>
         <div class="form-actions">
           <button type="submit" id="btn-save-local">Save locally</button>
-          <button type="button" id="btn-save-server">Save to server</button>
+          <button type="button" id="btn-save-server" class="server-only">Save to server</button>
           <button type="button" id="btn-export-json">Export JSON</button>
           <label class="file-label"><input type="file" id="import-file" accept=".json" /> Import JSON</label>
           <button type="button" id="btn-clear-form">Clear form</button>
@@ -56,6 +69,7 @@
     </section>
   </main>
 
+  <script src="js/config.js"></script>
   <script src="js/port-type-default.js"></script>
   <script src="js/device-types.js" type="module"></script>
 </body>

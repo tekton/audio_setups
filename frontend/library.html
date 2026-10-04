@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Library — Audio gear layout</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/device-types.css" />
+</head>
+<body>
+  <header>
+    <h1>Library</h1>
+    <nav>
+      <a href="port-types.html" class="nav-link">Port types</a>
+      <a href="device-types.html" class="nav-link">Device types</a>
+      <a href="index.html" class="nav-link">← Layout</a>
+    </nav>
+  </header>
+
+  <main class="device-types-page">
+    <p id="library-status" class="hint" role="status" aria-live="polite">Loading the library…</p>
+    <section class="section">
+      <h2>Example layouts</h2>
+      <p class="hint">Opening one saves your own copy in this browser, so you can change it freely.</p>
+      <ul id="library-layouts" class="type-list"></ul>
+    </section>
+    <section class="section">
+      <h2>Device types</h2>
+      <p class="hint">Adding a pack puts its devices in the “Add device” dropdown.</p>
+      <ul id="library-device-types" class="type-list"></ul>
+    </section>
+    <section class="section">
+      <h2>Port types</h2>
+      <p class="hint">Connector types and their colors. Cables only connect matching types.</p>
+      <ul id="library-port-types" class="type-list"></ul>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/library.js" type="module"></script>
+</body>
+</html>
