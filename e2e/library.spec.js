@@ -60,7 +60,8 @@ test('system reset needs confirmation and clears types but keeps saved layouts',
   await page.goto('/library.html');
   await page.locator('#library-device-types li').first().getByRole('button').click();
   await page.locator('#library-port-types li').first().getByRole('button').click();
-  await expect(page.locator('#library-status')).toContainText('Added');
+  // both adds are asynchronous (each fetches its pack first), so wait for both to land
+  await expect.poll(() => page.evaluate(() => ['audio_gear_device_types', 'audio_gear_port_types'].every((k) => localStorage.getItem(k) !== null))).toBe(true);
   await page.evaluate(() => localStorage.setItem('audio_gear_layouts', JSON.stringify([{ id: 'l1', name: 'Keep me', mode: 'rack', devices: [], connections: [] }])));
   const keys = () => page.evaluate(() => ['audio_gear_device_types', 'audio_gear_port_types', 'audio_gear_layouts'].map((k) => localStorage.getItem(k) !== null));
 

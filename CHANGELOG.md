@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Library page: **System reset** (clears custom device and port types, keeps layouts), **Export all layouts**, **Full backup** (layouts plus custom types), **Import** for any of those files, **Clear all layouts**, installed state with **Remove** for each pack, a storage summary and a backup reminder.
+- Library content: Desktop 10" and Full-width 19" gear packs; Desktop 10" rack, Two-channel listening rack and a freeform Headphone desk example.
+- Layouts: **Duplicate**, **Rename**, **Export image** (PNG), **Copy link** (share a layout in the URL), **Convert to rack** (Classic page), **Undo/Redo** and a printable **Parts list**.
+- Cables now route around devices in a stacked rack instead of crossing them.
+
 ## 0.2.0 - 2026-10-04
 
 ### Added

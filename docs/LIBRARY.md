@@ -54,3 +54,8 @@ The Library page has a **System reset** button (with a confirmation box). It rem
 ## Share links
 
 The in-app **Copy link** button puts the current layout in the link itself (`#share=...`, compressed where the browser supports it), so there is no file or server involved. Opening it loads an unsaved copy (Save keeps it) and sends it to the right page (rack or classic). Very long links (over about 6000 characters) get a warning, since some apps cut them off; use Export for those.
+
+## Undo/redo and the parts list
+
+- **Undo / Redo** (toolbar, or Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z, Ctrl+Y) step through edits to devices, racks and cables: after each finished action the layout is compared with the last snapshot (`frontend/js/history.js`), up to 100 steps. Loading, importing or starting a new layout clears the history, so undo never crosses into another layout. The layout's name and saved identity are not part of it. While a text field has focus, the shortcuts are left to the browser.
+- **Parts list** opens a table of racks, devices (size and rack slot), cables (both ends and type) and cables to buy by type (`frontend/js/parts.js`). **Print** prints only that list; **Copy as CSV** puts it on the clipboard for a spreadsheet.

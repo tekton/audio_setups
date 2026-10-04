@@ -7,6 +7,8 @@ import * as geo from './rack-geometry.js';
 import { U_PX, RACK_PAD, RACK_HEADER } from './rack-geometry.js';
 import { uniqueName, baseName } from './library-core.js';
 import { canvasToPng, downloadBlob } from './image-export.js';
+import { createHistory } from './history.js';
+import { partsList, partsCsv } from './parts.js';
 import { encodeShare, decodeShare, shareUrl, tokenFromHash, LONG_LINK } from './share.js';
 
 // 'classic' is the freeform view: no racks, ports on the sides by default. Layouts are kept per mode.
@@ -1149,6 +1151,8 @@ document.getElementById('add-device-select').addEventListener('change', (evt) =>
   evt.target.value = '';
 });
 
+let restoringHistory = false;
+
 function setStateFromLayout(layout) {
   state.layoutId = layout.id;
   state.name = layout.name || 'Untitled layout';
@@ -1181,6 +1185,7 @@ function setStateFromLayout(layout) {
   renderPortsEditor();
   updateRemoveCableButton();
   updateDeleteLayoutButton();
+  if (!restoringHistory) resetHistory();
 }
 
 function newLayout() {
@@ -1204,6 +1209,7 @@ function newLayout() {
   renderPortsEditor();
   updateRemoveCableButton();
   updateDeleteLayoutButton();
+  resetHistory();
 }
 
 async function refreshLoadLayoutOptions() {
@@ -1497,3 +1503,98 @@ if (shareToken) {
     })
     .catch((e) => showWarningMessage(`Could not open the link: ${e.message}`));
 }
+
+// Undo/redo: after each finished edit (mouse/touch release, click, change) the layout is compared with the last
+// snapshot and pushed if different. Name, saved id and selection are not part of it.
+const undoHistory = createHistory(100);
+const trackedJson = () => JSON.stringify({ devices: state.devices, connections: state.connections, racks: state.racks, port_layout: state.portLayout });
+
+function updateUndoButtons() {
+  document.getElementById('btn-undo').disabled = !undoHistory.canUndo();
+  document.getElementById('btn-redo').disabled = !undoHistory.canRedo();
+}
+
+function resetHistory() {
+  undoHistory.reset(trackedJson());
+  updateUndoButtons();
+}
+
+function flushHistory() {
+  if (undoHistory.push(trackedJson())) updateUndoButtons();
+}
+
+// One check per event, after its handlers have run (not debounced, so quick edits stay separate undo steps)
+['mouseup', 'touchend', 'click', 'change'].forEach((type) => document.addEventListener(type, () => setTimeout(flushHistory, 0), true));
+
+function stepHistory(direction) {
+  flushHistory(); // an edit made a moment ago must be recorded before stepping back over it
+  const json = direction === 'undo' ? undoHistory.undo() : undoHistory.redo();
+  if (json === null) return;
+  const snap = JSON.parse(json);
+  restoringHistory = true;
+  setStateFromLayout({ id: state.layoutId, name: state.name, devices: snap.devices, connections: snap.connections, racks: snap.racks, port_layout: snap.port_layout });
+  restoringHistory = false;
+  undoHistory.replaceCurrent(trackedJson()); // loading normalises the layout; keep that form so it isn't mistaken for a new edit
+  updateUndoButtons();
+}
+
+document.getElementById('btn-undo').addEventListener('click', () => stepHistory('undo'));
+document.getElementById('btn-redo').addEventListener('click', () => stepHistory('redo'));
+document.addEventListener('keydown', (evt) => {
+  if (!(evt.ctrlKey || evt.metaKey) || evt.altKey) return;
+  const target = evt.target;
+  if (target.closest?.('input, select, textarea, [contenteditable]')) return; // leave text undo to the browser
+  const key = evt.key.toLowerCase();
+  if (key === 'z') { evt.preventDefault(); stepHistory(evt.shiftKey ? 'redo' : 'undo'); }
+  else if (key === 'y') { evt.preventDefault(); stepHistory('redo'); }
+});
+resetHistory();
+
+// Parts list: devices and cables as a table you can print or paste into a spreadsheet
+const partsPanel = document.getElementById('parts-panel');
+
+function portTypeLabel(slug) {
+  return portTypesList.find((t) => t.type === slug)?.name || slug;
+}
+
+function renderParts() {
+  const parts = partsList(currentLayoutBody(), portTypeLabel);
+  document.getElementById('parts-title').textContent = state.name;
+  const body = document.getElementById('parts-body');
+  body.replaceChildren();
+  const table = (title, head, rows) => {
+    const h = document.createElement('h3');
+    h.textContent = title;
+    const t = document.createElement('table');
+    const tr = t.createTHead().insertRow();
+    head.forEach((text) => { const th = document.createElement('th'); th.textContent = text; tr.append(th); });
+    const tbody = t.createTBody();
+    if (!rows.length) { const r = tbody.insertRow(); const td = r.insertCell(); td.colSpan = head.length; td.textContent = 'None yet'; }
+    rows.forEach((row) => { const r = tbody.insertRow(); row.forEach((v) => { r.insertCell().textContent = v; }); });
+    body.append(h, t);
+  };
+  if (parts.racks.length) table(`Racks (${parts.racks.length})`, ['Name', 'Size'], parts.racks.map((r) => [r.name, r.size]));
+  table(`Devices (${parts.devices.length})`, ['Name', 'Size', 'Location'], parts.devices.map((d) => [d.name, d.size, d.where]));
+  table(`Cables (${parts.cables.length})`, ['From', 'To', 'Type'], parts.cables.map((c) => [c.from, c.to, c.type]));
+  if (parts.cableTotals.length) table('Cables to buy, by type', ['Type', 'Count'], parts.cableTotals.map((c) => [c.type, String(c.count)]));
+  return parts;
+}
+
+function setPartsOpen(open) {
+  partsPanel.hidden = !open;
+  document.getElementById('btn-parts').setAttribute('aria-expanded', String(open));
+  if (open) { renderParts(); partsPanel.scrollIntoView?.({ block: 'nearest' }); }
+}
+
+document.getElementById('btn-parts').addEventListener('click', () => setPartsOpen(partsPanel.hidden));
+document.getElementById('btn-parts-close').addEventListener('click', () => setPartsOpen(false));
+document.getElementById('btn-parts-print').addEventListener('click', () => { renderParts(); window.print(); });
+document.getElementById('btn-parts-csv').addEventListener('click', async () => {
+  const csv = partsCsv(renderParts());
+  try {
+    await navigator.clipboard.writeText(csv);
+    showWarningMessage('Parts list copied. Paste it into a spreadsheet.');
+  } catch {
+    window.prompt('Copy the parts list:', csv);
+  }
+});

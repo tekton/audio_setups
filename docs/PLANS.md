@@ -19,4 +19,4 @@ Out-of-scope and future ideas. Update as the product evolves.
 - Real-device pass on an iPhone and iPad before announcing the published site (Playwright only emulates them). Pinch-zoom and pull-to-refresh on the canvas, and a share-sheet Export on iOS, are untested.
 
 - Library: even more example racks and device packs, and grouping packs by category (see the categories note above). Done: 10" and 19" packs, more examples, and cable routing around stacked devices (`cableRoute` in `rack-geometry.js`).
-- Still open: undo/redo, and a printable parts-and-cables list.
+- Done: undo/redo (`frontend/js/history.js`, buttons plus Ctrl/Cmd+Z) and a printable parts-and-cables list (`frontend/js/parts.js`, the Parts list button).

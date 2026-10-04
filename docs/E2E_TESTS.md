@@ -31,6 +31,9 @@ The config (`playwright.config.js`) starts a static server for `frontend/` on po
 - `e2e/ports.spec.js` — ports on top/bottom vs sides: the default, the canvas-wide switch, the per-device override, and the classic view default.
 - `e2e/classic-and-storage.spec.js` — the classic view hides rack controls and keeps free-form device size; each view lists only its own saved layouts; a rack layout round-trips through save and load.
 
+- `e2e/library.spec.js`, `e2e/library-data.spec.js` — desktop: opening each example layout, adding packs (installed state and Remove), Export all, Full backup and Import round trips, Clear all, System reset (with confirmation), the storage summary and backup nudge.
+- `e2e/layout-actions.spec.js` — desktop: Duplicate and Rename for saved layouts.
+- `e2e/image-export.spec.js`, `e2e/share.spec.js`, `e2e/routing-convert.spec.js`, `e2e/undo-parts.spec.js` — all projects: PNG export (checked by decoding the downloaded image), share links (made in one browser context and opened in another), cables never drawn through devices and Convert to rack, and undo/redo plus the parts list.
 - `e2e/mobile.spec.js` — iPhone and iPad projects only: no sideways scrolling, buttons and fields at least 44px tall with 16px text (smaller text makes iOS zoom in), tap to select, dragging a device into a rack with touch events, connecting ports by tapping output then input, saving and reloading.
 - `e2e/portability.spec.js` — iPhone, iPad and desktop: Export downloads a JSON file and Import loads it back, Import rejects the wrong page's layouts and non-layouts, and the app keeps working (saving reports the failure) when `localStorage` throws, as in some private or restricted browsers.
 
