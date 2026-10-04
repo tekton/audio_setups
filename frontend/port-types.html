@@ -12,6 +12,7 @@
     <h1>Port types</h1>
     <nav>
       <a href="device-types.html" class="nav-link">Device types</a>
+      <a href="library.html" class="nav-link">Library</a>
       <a href="index.html" class="nav-link">← Layout</a>
     </nav>
   </header>
@@ -42,7 +43,7 @@
         </div>
         <div class="form-actions">
           <button type="submit" id="btn-save-local">Save locally</button>
-          <button type="button" id="btn-save-server">Save to server</button>
+          <button type="button" id="btn-save-server" class="server-only">Save to server</button>
           <button type="button" id="btn-export-json">Export JSON</button>
           <label class="file-label"><input type="file" id="import-file" accept=".json" /> Import JSON</label>
           <button type="button" id="btn-clear-form">Clear form</button>
@@ -51,6 +52,7 @@
     </section>
   </main>
 
+  <script src="js/config.js"></script>
   <script src="js/port-type-default.js"></script>
   <script src="js/port-types.js" type="module"></script>
 </body>

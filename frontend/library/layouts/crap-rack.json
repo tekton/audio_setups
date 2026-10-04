@@ -1,0 +1,156 @@
+{
+  "id": null,
+  "name": "The Crap Rack",
+  "devices": [
+    {
+      "id": "crap_mac",
+      "type": "Mac mini mount (6\")",
+      "label": "Mac mini mount (6\")",
+      "position": {
+        "x": 96,
+        "y": 288
+      },
+      "input_ports": [],
+      "output_ports": [
+        {
+          "name": "USB",
+          "type": "usb_audio"
+        }
+      ],
+      "template_id": "lib_mac_mini_mount_6in",
+      "width_in": 6,
+      "height_u": 2,
+      "rack_id": "crap_rack",
+      "rack_u": 1,
+      "rack_x": 0
+    },
+    {
+      "id": "crap_dac",
+      "type": "DAC (6\")",
+      "label": "DAC (6\")",
+      "position": {
+        "x": 96,
+        "y": 232
+      },
+      "input_ports": [
+        {
+          "name": "USB",
+          "type": "usb_audio"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "RCA Out",
+          "type": "rca"
+        }
+      ],
+      "template_id": "lib_dac_6in",
+      "width_in": 6,
+      "height_u": 1,
+      "rack_id": "crap_rack",
+      "rack_u": 3,
+      "rack_x": 0
+    },
+    {
+      "id": "crap_amp",
+      "type": "Headphone amp (6\")",
+      "label": "Headphone amp (6\")",
+      "position": {
+        "x": 96,
+        "y": 176
+      },
+      "input_ports": [
+        {
+          "name": "Line In",
+          "type": "rca"
+        },
+        {
+          "name": "Aux In",
+          "type": "rca"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "Phones",
+          "type": "trs_quarter"
+        }
+      ],
+      "template_id": "lib_headphone_amp_6in",
+      "width_in": 6,
+      "height_u": 1,
+      "rack_id": "crap_rack",
+      "rack_u": 4,
+      "rack_x": 0
+    },
+    {
+      "id": "crap_phono",
+      "type": "Phono stage (6\")",
+      "label": "Phono stage (6\")",
+      "position": {
+        "x": 96,
+        "y": 120
+      },
+      "input_ports": [
+        {
+          "name": "Phono In",
+          "type": "phono"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "RCA Out",
+          "type": "rca"
+        }
+      ],
+      "template_id": "lib_phono_stage_6in",
+      "width_in": 6,
+      "height_u": 1,
+      "rack_id": "crap_rack",
+      "rack_u": 5,
+      "rack_x": 0
+    }
+  ],
+  "connections": [
+    {
+      "id": "crap_c1",
+      "from_device_id": "crap_mac",
+      "to_device_id": "crap_dac",
+      "from_port": "USB",
+      "to_port": "USB",
+      "from_port_type": "usb_audio",
+      "to_port_type": "usb_audio"
+    },
+    {
+      "id": "crap_c2",
+      "from_device_id": "crap_dac",
+      "to_device_id": "crap_amp",
+      "from_port": "RCA Out",
+      "to_port": "Line In",
+      "from_port_type": "rca",
+      "to_port_type": "rca"
+    },
+    {
+      "id": "crap_c3",
+      "from_device_id": "crap_phono",
+      "to_device_id": "crap_amp",
+      "from_port": "RCA Out",
+      "to_port": "Aux In",
+      "from_port_type": "rca",
+      "to_port_type": "rca"
+    }
+  ],
+  "racks": [
+    {
+      "id": "crap_rack",
+      "label": "The Crap Rack",
+      "width_in": 6,
+      "height_u": 6,
+      "position": {
+        "x": 80,
+        "y": 40
+      }
+    }
+  ],
+  "port_layout": "top_bottom",
+  "mode": "rack"
+}

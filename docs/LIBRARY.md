@@ -1,0 +1,30 @@
+# Library
+
+`library.html` lets people pull ready-made content into their own browser: example rack layouts, device-type packs and port types. Everything is static JSON under `frontend/library/` (plus the shared `frontend/audio-gear-port-types.json`), so it ships in the local-only build with no backend.
+
+## What the page does
+
+- **Example layouts**: "Open a copy" saves a copy into device storage (a new id, and a name like "The Crap Rack (2)" if that name is taken), then opens it on the right page (`index.html?layout=<id>` for rack layouts, `classic.html` for classic ones).
+- **Device types**: "Add to my devices" merges the pack into the Device types list by id; the devices appear in the "Add device" dropdown as "<label> (custom)".
+- **Port types**: merges by id into the Port types list.
+
+Merging and copying logic is in `frontend/js/library-core.js` (pure, unit tested); `frontend/js/library.js` is the page wiring.
+
+## Adding to the library
+
+1. Drop a JSON file in `frontend/library/devices/` (an array of device types: `id`, `name`, `label`, `width_in` 6/10/19, `height_u`, `input_ports`, `output_ports` as `{name, type}`) or `frontend/library/layouts/` (a layout exported with **Save & load > Export**, or hand-built; keep `id: null` and `mode`).
+2. List it in `frontend/library/index.json` with an `id`, `name`, `description` and `file` (path relative to `frontend/`).
+3. Run `npm test`. `frontend/tests/library.test.mjs` checks every listed file: it exists, sizes and port types are valid, every racked device fits its rack without overlap, and every cable joins real ports of the same type. A layout example is easiest to author by building it in the app and exporting it.
+
+Use stable ids for device types (`lib_...`): layouts reference them through `template_id`, and re-adding a pack replaces the earlier copy instead of duplicating it.
+
+## Included
+
+- **The Crap Rack**: a 6" x 6U rack with a 2U Mac mini mount, DAC, headphone amp and phono stage (all 1U), cabled USB, then RCA. Uses the "Compact 6" gear" device pack.
+- **Home stereo rack**: a 19" x 8U rack with a 3U turntable, phono pre-amp, DAC, EQ and headphone amp.
+- **Common audio connectors**: the port types in `audio-gear-port-types.json`.
+
+## Known limits
+
+- Ports in a stacked rack are on the top and bottom edges, so cables between non-adjacent devices run straight through the devices in between. Ordering a rack so signal flows between neighbours (or using "Ports on sides") keeps them readable.
+- Layouts only come from the shipped library or a file the user imports; there's no user-to-user sharing beyond Export/Import.

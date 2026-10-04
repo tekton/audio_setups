@@ -11,6 +11,8 @@ const MODE = document.body.dataset.mode === 'classic' ? 'classic' : 'rack';
 const DEFAULT_PORT_LAYOUT = MODE === 'classic' ? 'sides' : 'top_bottom';
 const API_BASE = 'http://localhost:7001';
 const PORT_R = 5;
+const PORT_HIT_R = 18; // touch target radius
+const COARSE_POINTER = window.matchMedia?.('(pointer: coarse)').matches ?? false;
 const LOCAL_STORAGE_KEY = 'audio_gear_layouts';
 const STORAGE_MODE_KEY = 'audio_gear_storage_mode';
 const CUSTOM_TYPES_KEY = 'audio_gear_device_types';
@@ -33,7 +35,7 @@ let state = {
   storageMode: (() => {
     try {
       const m = localStorage.getItem(STORAGE_MODE_KEY);
-      return m === 'local' || m === 'server' ? m : 'local';
+      return !window.APP_CONFIG.localOnly && m === 'server' ? 'server' : 'local';
     } catch {
       return 'local';
     }
@@ -44,24 +46,24 @@ let state = {
 const storage = {
   server: {
     async listLayouts() {
-      const res = await fetch(`${API_BASE}/layouts`);
+      const res = await apiFetch(`${API_BASE}/layouts`);
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
     async getLayout(id) {
-      const res = await fetch(`${API_BASE}/layouts/${id}`);
+      const res = await apiFetch(`${API_BASE}/layouts/${id}`);
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
     async saveLayout(layout) {
       const method = layout.id ? 'PUT' : 'POST';
       const url = layout.id ? `${API_BASE}/layouts/${layout.id}` : `${API_BASE}/layouts`;
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(layout) });
+      const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(layout) });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
     async deleteLayout(id) {
-      const res = await fetch(`${API_BASE}/layouts/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`${API_BASE}/layouts/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(await res.text());
     },
   },
@@ -145,7 +147,7 @@ function getPortTypeColor(typeSlug) {
 async function loadPortTypes() {
   let api = [];
   try {
-    const res = await fetch(`${API_BASE}/port-types`);
+    const res = await apiFetch(`${API_BASE}/port-types`);
     if (res.ok) api = await res.json();
   } catch (_) {}
   try {
@@ -222,6 +224,14 @@ function getConnectionEndpoints(c) {
   return { a, b };
 }
 
+// The SVG only gets its min-height by default (400px), which clips tall racks: grow it to fit what's drawn
+function fitCanvasToContent() {
+  let bottom = 0;
+  state.racks.forEach((r) => { bottom = Math.max(bottom, r.position.y + geo.getRackSize(r).h); });
+  state.devices.forEach((d) => { bottom = Math.max(bottom, getDevicePosition(d).y + getDeviceSize(d).h); });
+  canvas.style.minHeight = `${Math.max(400, Math.ceil(bottom) + 60)}px`;
+}
+
 function renderDevices() {
   devicesLayer.innerHTML = '';
   state.devices.forEach((d) => {
@@ -254,6 +264,18 @@ function renderDevices() {
         tip.textContent = `${p.name} (${p.type || 'audio'})`;
         circle.append(tip);
         g.append(circle);
+        if (COARSE_POINTER) {
+          // Fingers need a bigger target than the 5px dot: an invisible circle that answers like the port
+          const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          hit.setAttribute('class', 'port-hit');
+          hit.setAttribute('cx', at.x);
+          hit.setAttribute('cy', at.y);
+          hit.setAttribute('r', PORT_HIT_R);
+          hit.dataset.port = circle.dataset.port;
+          hit.dataset.portType = circle.dataset.portType;
+          hit.dataset.portIo = io;
+          g.append(hit);
+        }
       });
     });
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -264,6 +286,7 @@ function renderDevices() {
     g.append(label);
     devicesLayer.appendChild(g);
   });
+  fitCanvasToContent();
 }
 
 function renderRacks() {
@@ -311,6 +334,7 @@ function renderRacks() {
     g.append(label);
     racksLayer.appendChild(g);
   });
+  fitCanvasToContent();
 }
 
 function renderCables() {
@@ -727,7 +751,7 @@ function setupCanvasListeners() {
   // Mouse events for desktop
   canvas.addEventListener('mousedown', (evt) => {
     const connectionId = evt.target.dataset?.connectionId;
-    const port = evt.target.closest('.device-port');
+    const port = evt.target.closest('.device-port, .port-hit');
     const g = evt.target.closest('[data-device-id]');
     if (connectionId) {
       selectConnection(connectionId);
@@ -777,7 +801,7 @@ function setupCanvasListeners() {
     
     const touchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
     const connectionId = touchTarget?.dataset?.connectionId;
-    const port = touchTarget?.closest('.device-port');
+    const port = touchTarget?.closest('.device-port, .port-hit');
     const g = touchTarget?.closest('[data-device-id]');
     
     // If touching a cable, select it and don't start move/cable
@@ -922,7 +946,7 @@ function getCustomDeviceTypes() {
 async function loadCustomDeviceTypes() {
   customDeviceTypes = getCustomDeviceTypes();
   try {
-    const res = await fetch(`${API_BASE}/device-types`);
+    const res = await apiFetch(`${API_BASE}/device-types`);
     if (res.ok) {
       const api = await res.json();
       const byId = new Map(customDeviceTypes.map((t) => [t.id, t]));
@@ -1289,6 +1313,46 @@ document.getElementById('btn-delete-layout').addEventListener('click', async () 
   }
 });
 
+// Export/import: layouts live in one browser, so a JSON file is how they move between devices
+function currentLayoutBody() {
+  state.name = document.getElementById('layout-name').value.trim() || state.name;
+  const devices = state.devices.map((d) => ({ ...d, template_id: d.template_id ?? d.templateId ?? null }));
+  return { id: null, name: state.name, devices, connections: state.connections, racks: state.racks, port_layout: state.portLayout, mode: MODE };
+}
+
+document.getElementById('btn-export-layout').addEventListener('click', () => {
+  const body = currentLayoutBody();
+  const blob = new Blob([JSON.stringify(body, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(body.name || 'layout').replace(/[^\w.-]+/g, '_')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+document.getElementById('btn-import-layout').addEventListener('click', () => {
+  document.getElementById('import-layout-file').click();
+});
+
+document.getElementById('import-layout-file').addEventListener('change', async (evt) => {
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if (!file) return;
+  try {
+    const layout = JSON.parse(await file.text());
+    if (!layout || !Array.isArray(layout.devices)) throw new Error('not a layout file');
+    if ((layout.mode || 'rack') !== MODE) throw new Error(`this is a ${layout.mode || 'rack'} layout; open the ${layout.mode === 'classic' ? 'Classic' : 'Rack'} page to import it`);
+    setStateFromLayout({ ...layout, id: null });
+    updateDeleteLayoutButton();
+    showWarningMessage('Imported. Press Save to keep it in this browser.');
+  } catch (e) {
+    alert('Import failed: ' + e.message);
+  }
+});
+
 function updateDeleteLayoutButton() {
   const btn = document.getElementById('btn-delete-layout');
   if (btn) btn.disabled = !state.layoutId;
@@ -1310,3 +1374,16 @@ updateDeleteLayoutButton();
 loadCustomDeviceTypes().then(() => refreshAddDeviceDropdown());
 refreshLoadLayoutOptions();
 setTimeout(refreshLoadLayoutOptions, 300);
+
+// library.html copies an example into device storage and links here with ?layout=<id>
+const openId = new URLSearchParams(window.location.search).get('layout');
+if (openId) {
+  state.storageMode = 'local';
+  document.getElementById('storage-mode-select').value = 'local';
+  storage.local.getLayout(openId)
+    .then((layout) => {
+      setStateFromLayout(layout);
+      window.history.replaceState(null, '', window.location.pathname);
+    })
+    .catch(() => showWarningMessage('Could not open that layout from this browser.'));
+}

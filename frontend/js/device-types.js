@@ -20,7 +20,7 @@ function getLocalPortTypes() {
 async function loadPortTypes() {
   let api = [];
   try {
-    const res = await fetch(`${API_BASE}/port-types`);
+    const res = await apiFetch(`${API_BASE}/port-types`);
     if (res.ok) api = await res.json();
   } catch (_) {}
   const local = getLocalPortTypes();
@@ -42,12 +42,16 @@ function getLocalTypes() {
 }
 
 function setLocalTypes(list) {
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+  } catch (_) {
+    alert('Could not save to this browser (storage is blocked or full). Private tabs and some privacy settings disable it.');
+  }
 }
 
 async function getApiTypes() {
   try {
-    const res = await fetch(`${API_BASE}/device-types`);
+    const res = await apiFetch(`${API_BASE}/device-types`);
     if (!res.ok) return [];
     return res.json();
   } catch {
@@ -221,7 +225,7 @@ async function saveServer() {
   try {
     const url = payload.id ? `${API_BASE}/device-types/${payload.id}` : `${API_BASE}/device-types`;
     const method = payload.id ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (!res.ok) throw new Error(await res.text());
     alert('Saved to server.');
     clearForm();
@@ -270,7 +274,7 @@ async function deleteType(id) {
   const local = getLocalTypes().filter((t) => t.id !== id);
   setLocalTypes(local);
   try {
-    await fetch(`${API_BASE}/device-types/${id}`, { method: 'DELETE' });
+    await apiFetch(`${API_BASE}/device-types/${id}`, { method: 'DELETE' });
   } catch (_) {}
   if (editingId === id) clearForm();
   loadMergedTypes().then(renderTypeList);

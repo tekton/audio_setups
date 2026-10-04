@@ -16,3 +16,5 @@ build
 *.env
 *.coverage
 .coverage.*.pytest_cache
+test-results
+playwright-report

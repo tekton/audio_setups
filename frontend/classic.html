@@ -14,6 +14,7 @@
         <a href="port-types.html" class="nav-link">Port types</a>
         <a href="device-types.html" class="nav-link">Device types</a>
         <a href="index.html" class="nav-link">Rack view</a>
+        <a href="library.html" class="nav-link">Library</a>
       </nav>
     </div>
     <div class="toolbar-main">
@@ -52,7 +53,7 @@
         </span>
       </div>
       <div id="toolbar-save-load" class="toolbar toolbar-save-load" role="region" aria-label="Save and load layout" hidden>
-        <span class="toolbar-group">
+        <span class="toolbar-group server-only">
           <label for="storage-mode-select" class="toolbar-label">Save/Load From</label>
           <select id="storage-mode-select" class="toolbar-select" aria-label="Storage: Server or Device">
             <option value="server">Server</option>
@@ -63,6 +64,11 @@
           <input type="text" id="layout-name" class="toolbar-input" placeholder="Layout name" value="Untitled layout" aria-label="Layout name" />
           <button type="button" id="btn-save">Save</button>
           <button type="button" id="btn-new">New layout</button>
+        </span>
+        <span class="toolbar-group">
+          <button type="button" id="btn-export-layout" title="Download this layout as a JSON file">Export</button>
+          <button type="button" id="btn-import-layout" title="Load a layout from a JSON file">Import</button>
+          <input type="file" id="import-layout-file" accept="application/json,.json" hidden />
         </span>
         <span class="toolbar-group">
           <label for="load-layout-select" class="toolbar-label">Load</label>
@@ -109,6 +115,7 @@
     </svg>
   </main>
 
+  <script src="js/config.js"></script>
   <script src="js/port-type-default.js"></script>
   <script src="js/app.js" type="module"></script>
 </body>

@@ -1,0 +1,174 @@
+{
+  "id": null,
+  "name": "Home stereo rack",
+  "devices": [
+    {
+      "id": "home_tt",
+      "type": "turntable",
+      "label": "Turntable",
+      "position": {
+        "x": 96,
+        "y": 344
+      },
+      "input_ports": [],
+      "output_ports": [
+        {
+          "name": "Phono",
+          "type": "phono"
+        }
+      ],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 3,
+      "rack_id": "home_rack",
+      "rack_u": 1,
+      "rack_x": 0
+    },
+    {
+      "id": "home_phono",
+      "type": "phono",
+      "label": "Phono pre-amp",
+      "position": {
+        "x": 96,
+        "y": 288
+      },
+      "input_ports": [
+        {
+          "name": "Phono",
+          "type": "phono"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "Out",
+          "type": "audio"
+        }
+      ],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 1,
+      "rack_id": "home_rack",
+      "rack_u": 4,
+      "rack_x": 0
+    },
+    {
+      "id": "home_dac",
+      "type": "dac",
+      "label": "DAC",
+      "position": {
+        "x": 96,
+        "y": 232
+      },
+      "input_ports": [],
+      "output_ports": [
+        {
+          "name": "Out",
+          "type": "audio"
+        }
+      ],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 1,
+      "rack_id": "home_rack",
+      "rack_u": 5,
+      "rack_x": 0
+    },
+    {
+      "id": "home_eq",
+      "type": "eq",
+      "label": "EQ",
+      "position": {
+        "x": 96,
+        "y": 176
+      },
+      "input_ports": [
+        {
+          "name": "In",
+          "type": "audio"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "Out",
+          "type": "audio"
+        }
+      ],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 1,
+      "rack_id": "home_rack",
+      "rack_u": 6,
+      "rack_x": 0
+    },
+    {
+      "id": "home_amp",
+      "type": "headphone_amp",
+      "label": "Headphone amp",
+      "position": {
+        "x": 96,
+        "y": 120
+      },
+      "input_ports": [
+        {
+          "name": "In",
+          "type": "audio"
+        }
+      ],
+      "output_ports": [
+        {
+          "name": "Phones",
+          "type": "audio"
+        }
+      ],
+      "template_id": null,
+      "width_in": 19,
+      "height_u": 1,
+      "rack_id": "home_rack",
+      "rack_u": 7,
+      "rack_x": 0
+    }
+  ],
+  "connections": [
+    {
+      "id": "home_c1",
+      "from_device_id": "home_tt",
+      "to_device_id": "home_phono",
+      "from_port": "Phono",
+      "to_port": "Phono",
+      "from_port_type": "phono",
+      "to_port_type": "phono"
+    },
+    {
+      "id": "home_c2",
+      "from_device_id": "home_phono",
+      "to_device_id": "home_eq",
+      "from_port": "Out",
+      "to_port": "In",
+      "from_port_type": "audio",
+      "to_port_type": "audio"
+    },
+    {
+      "id": "home_c3",
+      "from_device_id": "home_eq",
+      "to_device_id": "home_amp",
+      "from_port": "Out",
+      "to_port": "In",
+      "from_port_type": "audio",
+      "to_port_type": "audio"
+    }
+  ],
+  "racks": [
+    {
+      "id": "home_rack",
+      "label": "Home stereo",
+      "width_in": 19,
+      "height_u": 8,
+      "position": {
+        "x": 80,
+        "y": 40
+      }
+    }
+  ],
+  "port_layout": "top_bottom",
+  "mode": "rack"
+}

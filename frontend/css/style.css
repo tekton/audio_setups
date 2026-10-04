@@ -453,7 +453,116 @@ body[data-mode="classic"] .rack-only {
   }
 }
 
+/* Invisible enlarged touch target around a port (only drawn on touch screens) */
+.port-hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
 /* Ensure proper touch handling */
 svg {
   touch-action: none;
+}
+
+/* Hidden in the local-only build (no backend) */
+[data-local-only] .server-only {
+  display: none !important;
+}
+
+/* Phones and small tablets: wrap the header and toolbars, bigger tap targets, 16px inputs (iOS zooms in on smaller ones) */
+@media (max-width: 820px), (pointer: coarse) {
+  body {
+    min-height: 100dvh;
+  }
+
+  header {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .header-brand {
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .header-brand h1,
+  header nav {
+    margin: 0;
+  }
+
+  header nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+
+  .nav-link + .nav-link {
+    margin-left: 0;
+  }
+
+  .nav-link {
+    padding: 0.4rem 0;
+  }
+
+  .toolbar-row-main,
+  .toolbar-save-load {
+    gap: 0.5rem;
+  }
+
+  .toolbar-row-main .toolbar-group + .toolbar-group,
+  .toolbar-save-load .toolbar-group + .toolbar-group {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .toolbar-group {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+
+  .toolbar button,
+  .ports-editor #btn-apply-ports {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  /* iOS ignores min-height on native selects, so size them directly */
+  .toolbar-select,
+  .toolbar-input,
+  .ports-editor select,
+  .ports-editor input[type="text"],
+  .ports-editor input[type="number"] {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .toolbar-select,
+  .toolbar-input,
+  .ports-editor input[type="text"],
+  .ports-editor input[type="number"],
+  .ports-editor select {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .toolbar-switch input {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .ports-editor {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .ports-editor input[type="text"] {
+    flex: 1 1 100%;
+  }
+
+  .canvas-message {
+    max-width: calc(100% - 1.5rem);
+  }
+
+  #canvas {
+    min-height: 60vh;
+  }
 }

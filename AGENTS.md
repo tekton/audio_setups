@@ -22,4 +22,7 @@ Do not try to commit to git, allow the user to do that
 ## Tests
 
 - Frontend: `npm test` (Jest, `frontend/tests/`). Pure rack/port geometry lives in `frontend/js/rack-geometry.js` (no DOM or app state) and is unit tested by `frontend/tests/rack-geometry.test.mjs`; keep new layout math there. `.mjs` tests import the app's ES modules natively (`npm test` passes `--experimental-vm-modules`; `frontend/js/package.json` marks that folder as ESM). Backend: `pip install -r backend/requirements-dev.txt && python -m pytest backend/tests`.
-- CI: `.github/workflows/test.yml` runs both on every push and pull request.
+- E2E: `npm run test:e2e` (Playwright, `e2e/`; desktop plus iPhone/iPad WebKit emulation); see [docs/E2E_TESTS.md](docs/E2E_TESTS.md).
+- Publishing: `npm run build:local` builds a backend-free, local-storage-only site into `dist/`; see [docs/PUBLISHING.md](docs/PUBLISHING.md). Route backend calls through `apiFetch` and mark server-only UI `.server-only`.
+- Library: `library.html` imports example layouts, device packs and port types from `frontend/library/index.json`; see [docs/LIBRARY.md](docs/LIBRARY.md). `npm test` validates every listed file.
+- CI: `.github/workflows/test.yml` runs all of these on every push and pull request.
