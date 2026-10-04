@@ -32,3 +32,28 @@ export function copyLayout(layout, id, takenNames) {
 export function pageForLayout(layout) {
   return layout.mode === 'classic' ? 'classic.html' : 'index.html';
 }
+
+// Reads an exported layouts file: one layout object, or the array that "Export all layouts" writes.
+// Throws if it isn't JSON or any entry isn't a layout (an object with a devices array).
+export function parseLayoutsFile(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('not a JSON file');
+  }
+  const list = Array.isArray(data) ? data : [data];
+  if (!list.length || !list.every((l) => l && typeof l === 'object' && Array.isArray(l.devices))) throw new Error('not a layouts file');
+  return list;
+}
+
+// Gives each imported layout a fresh id and a name that doesn't clash with saved ones or earlier imports.
+export function importLayouts(layouts, saved, newId) {
+  const names = saved.map((l) => l.name);
+  const added = layouts.map((l) => {
+    const copy = copyLayout(l, newId(), names);
+    names.push(copy.name);
+    return copy;
+  });
+  return [...saved, ...added];
+}

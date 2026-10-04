@@ -36,8 +36,10 @@
     </section>
     <section class="section">
       <h2>Your layouts</h2>
-      <p class="hint">Export all saves every layout in this browser to one JSON file. Clear all layouts deletes them (export first if you want a copy).</p>
+      <p class="hint">Export all saves every layout in this browser to one JSON file. Import layouts adds layouts from a file (one layout or an Export all file) as new copies. Clear all layouts deletes them (export first if you want a copy).</p>
       <button type="button" id="library-export-layouts">Export all layouts</button>
+      <button type="button" id="library-import-layouts">Import layouts…</button>
+      <input type="file" id="library-import-file" accept="application/json,.json" hidden />
       <button type="button" id="library-clear-layouts">Clear all layouts…</button>
     </section>
     <section class="section">

@@ -31,7 +31,7 @@ Use stable ids for device types (`lib_...`): layouts reference them through `tem
 
 ## Your layouts
 
-The Library page also has **Export all layouts** (every saved layout in one JSON file, `audio_gear_all_layouts.json`) and **Clear all layouts** (with a confirmation box; device and port types are kept). The file is a JSON array of layouts. The app's Import button only reads a single layout file, so restoring from this backup is not supported yet.
+The Library page also has **Export all layouts** (every saved layout in one JSON file, `audio_gear_all_layouts.json`) and **Clear all layouts** (with a confirmation box; device and port types are kept). **Import layouts…** reads that file back (or a single exported layout) and adds each layout as a new copy with a fresh id and a non-clashing name, so it never overwrites what is saved.
 
 ## System reset
 

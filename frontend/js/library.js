@@ -2,7 +2,7 @@
  * Library page: ready-made example layouts, device-type packs and port types, all served as static JSON
  * from library/ (listed in library/index.json). Everything is copied into this browser's localStorage.
  */
-import { mergeById, normalizeDeviceTypes, copyLayout, pageForLayout } from './library-core.js';
+import { mergeById, normalizeDeviceTypes, copyLayout, pageForLayout, parseLayoutsFile, importLayouts } from './library-core.js';
 
 const LAYOUTS_KEY = 'audio_gear_layouts';
 const DEVICE_TYPES_KEY = 'audio_gear_device_types';
@@ -127,6 +127,23 @@ function clearLayouts() {
   }
 }
 
+async function importLayoutsFile(evt) {
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if (!file) return;
+  try {
+    const layouts = parseLayoutsFile(await file.text());
+    const saved = readList(LAYOUTS_KEY);
+    if (writeList(LAYOUTS_KEY, importLayouts(layouts, saved, newLayoutId))) {
+      say(`Imported ${layouts.length} layout${layouts.length === 1 ? '' : 's'} as new copies. Find them under Load on the layout pages.`);
+    }
+  } catch (e) {
+    say(`Import failed: ${e.message}`);
+  }
+}
+
+document.getElementById('library-import-layouts').addEventListener('click', () => document.getElementById('library-import-file').click());
+document.getElementById('library-import-file').addEventListener('change', importLayoutsFile);
 document.getElementById('library-export-layouts').addEventListener('click', exportAllLayouts);
 document.getElementById('library-clear-layouts').addEventListener('click', clearLayouts);
 document.getElementById('library-reset').addEventListener('click', systemReset);

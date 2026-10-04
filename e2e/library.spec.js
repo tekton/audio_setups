@@ -118,3 +118,37 @@ test('Clear all layouts needs confirmation and leaves device and port types alon
   await expect(page.locator('#library-status')).toContainText('Cleared 2 layouts');
   expect(await keys()).toEqual([false, true, true]);
 });
+
+const names = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('audio_gear_layouts') || '[]').map((l) => l.name));
+const importFile = (page, name, content) => page.locator('#library-import-file').setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(content) });
+
+test('Export all, Clear, then Import restores every layout', async ({ page }) => {
+  await page.goto('/library.html');
+  await page.evaluate((l) => localStorage.setItem('audio_gear_layouts', JSON.stringify(l)), SAVED);
+  const download = page.waitForEvent('download');
+  await page.locator('#library-export-layouts').click();
+  const exported = require('fs').readFileSync(await (await download).path(), 'utf8');
+  await page.locator('#library-clear-layouts').click(); // beforeEach accepts the confirm
+  expect(await names(page)).toEqual([]);
+
+  await importFile(page, 'backup.json', exported);
+  await expect(page.locator('#library-status')).toContainText('Imported 2 layouts');
+  expect(await names(page)).toEqual(['One', 'Two']);
+});
+
+test('Import adds a single layout file as a new copy next to what is already saved', async ({ page }) => {
+  await page.goto('/library.html');
+  await page.evaluate((l) => localStorage.setItem('audio_gear_layouts', JSON.stringify(l)), SAVED);
+  await importFile(page, 'one.json', JSON.stringify({ name: 'One', mode: 'rack', devices: [], connections: [] }));
+  await expect(page.locator('#library-status')).toContainText('Imported 1 layout');
+  expect(await names(page)).toEqual(['One', 'Two', 'One (2)']);
+});
+
+test('Import rejects files that are not layouts and saves nothing', async ({ page }) => {
+  await page.goto('/library.html');
+  await importFile(page, 'bad.json', 'not json');
+  await expect(page.locator('#library-status')).toContainText('Import failed: not a JSON file');
+  await importFile(page, 'bad2.json', '[{"name":"x"}]');
+  await expect(page.locator('#library-status')).toContainText('Import failed: not a layouts file');
+  expect(await names(page)).toEqual([]);
+});
